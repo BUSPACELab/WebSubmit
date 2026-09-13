@@ -17,7 +17,6 @@ mod index;
 mod login;
 mod manage;
 mod policies;
-mod predict;
 mod questions;
 
 pub use args::parse_args;
@@ -45,6 +44,11 @@ pub fn make_rocket(args: args::Args) -> SesameRocket<Build> {
 
     let template_dir = config.template_dir.clone();
     let resource_dir = config.resource_dir.clone();
+
+    // rocket_dyn_templates validates its own configured template directory (default
+    // "templates", resolved against the working directory) before the custom callback
+    // below runs, so point it at the directory from our config.
+    std::env::set_var("ROCKET_TEMPLATE_DIR", &template_dir);
     let template = Template::try_custom(move |engines| {
         let result = engines
             .handlebars
@@ -85,10 +89,6 @@ pub fn make_rocket(args: args::Args) -> SesameRocket<Build> {
             questions::answers_for_discussion_leaders_naive,
         ])
         .mount("/leclist", routes![questions::leclist])
-        .mount(
-            "/predict",
-            routes![predict::predict, predict::predict_grade, predict::retrain_model],
-        )
         .mount("/login", routes![login::login])
         .mount(
             "/admin/lec/add",

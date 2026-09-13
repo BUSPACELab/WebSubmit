@@ -6,10 +6,6 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-chrono = { version = "0.4.0", features = ["serde"] }
-linfa = "0.6.1"
-linfa-linear = "0.6.1"
-ndarray = "0.15.6"
 sha2 = "0.10.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -25,8 +21,7 @@ path = "src/lib.rs"
 
 [package.metadata]
 sandboxes = [
-    "hash", 
-    "train"
+    "hash"
 ]
 
 [features]

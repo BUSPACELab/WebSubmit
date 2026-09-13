@@ -29,7 +29,8 @@ impl MySqlBackend {
             Some(l) => l,
         };
 
-        let schema = std::fs::read_to_string("src/schema.sql")?;
+        // Embedded at compile time so the binary does not depend on the working directory.
+        let schema = include_str!("schema.sql");
 
         debug!(
             log,

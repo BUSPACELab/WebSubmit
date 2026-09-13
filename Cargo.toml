@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+    "websubmit_boxed",
+    "websubmit_boxed_sandboxes",
+]
+
+# Must live at the workspace root: `[patch]` sections in member manifests are ignored.
+[patch.crates-io]
+funty = { git = "https://github.com/bitvecto-rs/funty/", rev = "7ef0d890fbcd8b3def1635ac1a877fc298488446" }

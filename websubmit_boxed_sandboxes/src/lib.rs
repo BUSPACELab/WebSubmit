@@ -5,10 +5,10 @@ use linfa::prelude::*;
 use linfa_linear::{FittedLinearRegression, LinearRegression};
 use ndarray::prelude::*;
 
-use alohomora_derive::AlohomoraSandbox;
+use sesame_derive::SesameSandbox;
 
 // Sandbox functions.
-#[AlohomoraSandbox()]
+#[SesameSandbox()]
 pub fn hash(inputs: (String, String)) -> String {
     let mut hasher = Sha256::new();
     hasher.update(&inputs.0);
@@ -16,7 +16,7 @@ pub fn hash(inputs: (String, String)) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-#[AlohomoraSandbox()]
+#[SesameSandbox()]
 pub fn train(grades: Vec<(NaiveDateTime, u64)>) -> FittedLinearRegression<f64> {
     let grades: Vec<[f64; 2]> = grades
         .into_iter()

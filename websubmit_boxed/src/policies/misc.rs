@@ -1,7 +1,7 @@
-use alohomora::context::UnprotectedContext;
-use alohomora::policy::{
-    schema_policy, AnyPolicy, FrontendPolicy, Policy, PolicyAnd, Reason, SchemaPolicy,
-};
+use sesame::context::UnprotectedContext;
+use sesame::policy::{Reason, SimplePolicy};
+use sesame_rocket::policy::FrontendPolicy;
+use sesame_mysql::{schema_policy, SchemaPolicy};
 use mysql::Value;
 use rocket::http::Cookie;
 use rocket::Request;
@@ -12,30 +12,21 @@ pub struct QueryableOnly {}
 
 // Content of apikey column can only be accessed by:
 //   1. SELECT query
-impl Policy for QueryableOnly {
-    fn name(&self) -> String {
+impl SimplePolicy for QueryableOnly {
+    fn simple_name(&self) -> String {
         "QueryableOnly".to_string()
     }
 
-    fn check(&self, _context: &UnprotectedContext, reason: Reason) -> bool {
+    fn simple_check(&self, _context: &UnprotectedContext, reason: Reason) -> bool {
         match reason {
             Reason::DB(query, _) => query.starts_with("SELECT"),
             _ => false,
         }
     }
 
-    fn join(&self, other: AnyPolicy) -> Result<AnyPolicy, ()> {
-        if other.is::<QueryableOnly>() {
-            // Policies are combinable
-            Ok(other)
-        } else {
-            //Policies must be stacked
-            Ok(AnyPolicy::new(PolicyAnd::new(self.clone(), other)))
-        }
-    }
 
-    fn join_logic(&self, _other: Self) -> Result<Self, ()> {
-        Ok(QueryableOnly {})
+    fn simple_join_direct(&mut self, other: &mut Self) {
+        // QueryableOnly carries no state; nothing to combine.
     }
 }
 

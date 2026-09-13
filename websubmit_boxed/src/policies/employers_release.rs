@@ -1,8 +1,9 @@
 use crate::config::Config;
 use crate::policies::ContextData;
-use alohomora::context::UnprotectedContext;
-use alohomora::policy::{schema_policy, AnyPolicy, Policy, PolicyAnd, Reason, SchemaPolicy};
-use alohomora::AlohomoraType;
+use sesame::context::UnprotectedContext;
+use sesame::policy::{Reason, SimplePolicy};
+use sesame_mysql::{schema_policy, SchemaPolicy};
+use sesame::SesameTypeOut;
 
 // ML training policy.
 #[schema_policy(table = "employers_release", column = 0)]
@@ -12,13 +13,13 @@ pub struct EmployersReleasePolicy {
     consent: bool,
 }
 
-impl Policy for EmployersReleasePolicy {
-    fn name(&self) -> String {
+impl SimplePolicy for EmployersReleasePolicy {
+    fn simple_name(&self) -> String {
         "EmployersReleasePolicy".to_string()
     }
 
-    fn check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
-        type ContextDataOut = <ContextData as AlohomoraType>::Out;
+    fn simple_check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
+        type ContextDataOut = <ContextData as SesameTypeOut>::Out;
         let context: &ContextDataOut = context.downcast_ref().unwrap();
 
         let user: &Option<String> = &context.user;
@@ -31,22 +32,9 @@ impl Policy for EmployersReleasePolicy {
         return false;
     }
 
-    fn join(&self, other: AnyPolicy) -> Result<AnyPolicy, ()> {
-        if other.is::<EmployersReleasePolicy>() {
-            let other = other.specialize::<EmployersReleasePolicy>().unwrap();
-            Ok(AnyPolicy::new(self.join_logic(other)?))
-        } else {
-            Ok(AnyPolicy::new(PolicyAnd::new(
-                AnyPolicy::new(self.clone()),
-                other,
-            )))
-        }
-    }
 
-    fn join_logic(&self, p2: Self) -> Result<Self, ()> {
-        Ok(EmployersReleasePolicy {
-            consent: self.consent && p2.consent,
-        })
+    fn simple_join_direct(&mut self, other: &mut Self) {
+        self.consent = self.consent && other.consent;
     }
 }
 

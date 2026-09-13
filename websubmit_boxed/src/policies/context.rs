@@ -4,34 +4,34 @@ use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
 use rocket::State;
 
-use alohomora::bbox::BBox;
-use alohomora::context::Context;
-use alohomora::db::from_value;
-use alohomora::policy::NoPolicy;
-use alohomora::rocket::{BBoxRequest, BBoxRequestOutcome, FromBBoxRequest};
-use alohomora::AlohomoraType;
+use sesame::pcon::PCon;
+use sesame::context::Context;
+use sesame_mysql::from_value;
+use sesame::policy::NoPolicy;
+use sesame_rocket::rocket::{PConRequest, PConRequestOutcome, FromPConRequest};
+use sesame::SesameType;
 
 use crate::backend::MySqlBackend;
 use crate::config::Config;
 use crate::policies::QueryableOnly;
 
 // Custom developer defined payload attached to every context.
-#[derive(AlohomoraType, Clone)]
-#[alohomora_out_type(verbatim = [db, config])]
+#[derive(SesameType, Clone)]
+#[sesame_out_type(verbatim = [db, config])]
 pub struct ContextData {
-    pub user: Option<BBox<String, NoPolicy>>,
+    pub user: Option<PCon<String, NoPolicy>>,
     pub db: Arc<Mutex<MySqlBackend>>,
     pub config: Config,
 }
 
 // Build the custom payload for the context given HTTP request.
 #[rocket::async_trait]
-impl<'a, 'r> FromBBoxRequest<'a, 'r> for ContextData {
-    type BBoxError = ();
+impl<'a, 'r> FromPConRequest<'a, 'r> for ContextData {
+    type PConError = ();
 
-    async fn from_bbox_request(
-        request: BBoxRequest<'a, 'r>,
-    ) -> BBoxRequestOutcome<Self, Self::BBoxError> {
+    async fn from_pcon_request(
+        request: PConRequest<'a, 'r>,
+    ) -> PConRequestOutcome<Self, Self::PConError> {
         let db: &State<Arc<Mutex<MySqlBackend>>> = request.guard().await.unwrap();
         let config: &State<Config> = request.guard().await.unwrap();
 
@@ -49,7 +49,7 @@ impl<'a, 'r> FromBBoxRequest<'a, 'r> for ContextData {
                 );
                 drop(bg);
                 if res.len() > 0 {
-                    Some(from_value(res[0][0].clone()).unwrap())
+                    Some(from_value(res[0].get(0).unwrap()).unwrap())
                 } else {
                     None
                 }

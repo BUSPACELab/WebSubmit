@@ -1,9 +1,10 @@
 use crate::backend::MySqlBackend;
 use crate::config::Config;
 use crate::policies::ContextData;
-use alohomora::context::{Context, UnprotectedContext};
-use alohomora::policy::{schema_policy, AnyPolicy, Policy, PolicyAnd, Reason, SchemaPolicy};
-use alohomora::AlohomoraType;
+use sesame::context::{Context, UnprotectedContext};
+use sesame::policy::{Reason, SimplePolicy};
+use sesame_mysql::{schema_policy, SchemaPolicy};
+use sesame::SesameTypeOut;
 use std::sync::{Arc, Mutex};
 
 // Access control policy.
@@ -36,13 +37,13 @@ impl AnswerAccessPolicy {
 //   2. The admin(s) (`is me in set<admins>`);
 //   3. Any student who is leading discussion for the lecture
 //      (`P(me)` alter. `is me in set<P(students)>`);
-impl Policy for AnswerAccessPolicy {
-    fn name(&self) -> String {
+impl SimplePolicy for AnswerAccessPolicy {
+    fn simple_name(&self) -> String {
             "AnswerAccessPolicy".to_string()
     }
 
-    fn check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
-        type ContextDataOut = <ContextData as AlohomoraType>::Out;
+    fn simple_check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
+        type ContextDataOut = <ContextData as SesameTypeOut>::Out;
         let context: &ContextDataOut = context.downcast_ref().unwrap();
 
         let user: &Option<String> = &context.user;
@@ -72,7 +73,7 @@ impl Policy for AnswerAccessPolicy {
             let mut bg = db.lock().unwrap();
             let vec = bg.prep_exec(
                 "SELECT * FROM discussion_leaders WHERE lec = ? AND email = ?",
-                (lec_id, user),
+                (lec_id, user.clone()),
                 Context::empty(),
             );
             return vec.len() > 0;
@@ -81,37 +82,14 @@ impl Policy for AnswerAccessPolicy {
         return false;
     }
 
-    fn join(&self, other: AnyPolicy) -> Result<AnyPolicy, ()> {
-        if other.is::<AnswerAccessPolicy>() {
-            // Policies are combinable
-            let other = other.specialize::<AnswerAccessPolicy>().unwrap();
-            Ok(AnyPolicy::new(self.join_logic(other)?))
-        } else {
-            //Policies must be stacked
-            Ok(AnyPolicy::new(PolicyAnd::new(
-                AnyPolicy::new(self.clone()),
-                other,
-            )))
-        }
-    }
 
-    fn join_logic(&self, p2: Self) -> Result<Self, ()> {
-        let comp_owner: Option<String>;
-        let comp_lec_id: Option<u64>;
-        if self.owner.eq(&p2.owner) {
-            comp_owner = self.owner.clone();
-        } else {
-            comp_owner = None;
+    fn simple_join_direct(&mut self, other: &mut Self) {
+        if !self.owner.eq(&other.owner) {
+            self.owner = None;
         }
-        if self.lec_id.eq(&p2.lec_id) {
-            comp_lec_id = self.lec_id.clone();
-        } else {
-            comp_lec_id = None;
+        if !self.lec_id.eq(&other.lec_id) {
+            self.lec_id = None;
         }
-        Ok(AnswerAccessPolicy {
-            owner: comp_owner,
-            lec_id: comp_lec_id,
-        })
     }
 }
 

@@ -1,8 +1,9 @@
 use crate::config::Config;
 use crate::policies::ContextData;
-use alohomora::context::UnprotectedContext;
-use alohomora::policy::{schema_policy, AnyPolicy, Policy, PolicyAnd, Reason, SchemaPolicy};
-use alohomora::AlohomoraType;
+use sesame::context::UnprotectedContext;
+use sesame::policy::{Reason, SimplePolicy};
+use sesame_mysql::{schema_policy, SchemaPolicy};
+use sesame::SesameTypeOut;
 
 // Aggregate access policy.
 #[schema_policy(table = "agg_gender", column = 1)]
@@ -14,13 +15,13 @@ pub struct AggregateAccessPolicy {
 
 const SENSITIVE_TABLES: &'static [&'static str] = &["agg_gender"];
 
-impl Policy for AggregateAccessPolicy {
-    fn name(&self) -> String {
+impl SimplePolicy for AggregateAccessPolicy {
+    fn simple_name(&self) -> String {
         "AggregateAccessPolicy".to_string()
     }
 
-    fn check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
-        type ContextDataOut = <ContextData as AlohomoraType>::Out;
+    fn simple_check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
+        type ContextDataOut = <ContextData as SesameTypeOut>::Out;
         let context: &ContextDataOut = context.downcast_ref().unwrap();
 
         let user: &Option<String> = &context.user;
@@ -33,22 +34,9 @@ impl Policy for AggregateAccessPolicy {
         return false;
     }
 
-    fn join(&self, other: AnyPolicy) -> Result<AnyPolicy, ()> {
-        if other.is::<AggregateAccessPolicy>() {
-            let other = other.specialize::<AggregateAccessPolicy>().unwrap();
-            Ok(AnyPolicy::new(self.join_logic(other)?))
-        } else {
-            Ok(AnyPolicy::new(PolicyAnd::new(
-                AnyPolicy::new(self.clone()),
-                other,
-            )))
-        }
-    }
 
-    fn join_logic(&self, p2: Self) -> Result<Self, ()> {
-        Ok(AggregateAccessPolicy {
-            sensitive: self.sensitive || p2.sensitive,
-        })
+    fn simple_join_direct(&mut self, other: &mut Self) {
+        self.sensitive = self.sensitive || other.sensitive;
     }
 }
 

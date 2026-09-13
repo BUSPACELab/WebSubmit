@@ -1,4 +1,4 @@
-use alohomora::rocket::{routes, BBoxRocket, BBoxRoute};
+use sesame_rocket::rocket::{routes, SesameRocket, SesameRoute};
 use rocket::fs::FileServer;
 use rocket::Build;
 use rocket_dyn_templates::Template;
@@ -29,7 +29,7 @@ fn new_logger() -> slog::Logger {
     Logger::root(Mutex::new(term_full()).fuse(), o!())
 }
 
-pub fn make_rocket(args: args::Args) -> BBoxRocket<Build> {
+pub fn make_rocket(args: args::Args) -> SesameRocket<Build> {
     let config = args.config;
 
     let backend = Arc::new(Mutex::new(
@@ -55,17 +55,17 @@ pub fn make_rocket(args: args::Args) -> BBoxRocket<Build> {
         }
     });
 
-    BBoxRocket::build()
+    SesameRocket::build()
         .attach(template)
         .manage(backend)
         .manage(config)
         .mount(
             "/css",
-            BBoxRoute::from(FileServer::from(format!("{}/css", resource_dir))),
+            SesameRoute::from(FileServer::from(format!("{}/css", resource_dir))),
         )
         .mount(
             "/js",
-            BBoxRoute::from(FileServer::from(format!("{}/js", resource_dir))),
+            SesameRoute::from(FileServer::from(format!("{}/js", resource_dir))),
         )
         .mount("/", routes![index::index])
         .mount(

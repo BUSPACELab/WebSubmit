@@ -8,16 +8,16 @@ use mysql::Value;
 use rocket::State;
 
 use crate::admin::Admin;
-use alohomora::bbox::{BBox, BBoxRender};
-use alohomora::context::Context;
-use alohomora::db::{from_value, from_value_or_null};
-use alohomora::fold::fold;
-use alohomora::pcr::{PrivacyCriticalRegion, Signature};
-use alohomora::policy::{AnyPolicy, NoPolicy};
-use alohomora::pure::{execute_pure, PrivacyPureRegion};
-use alohomora::rocket::{get, post, BBoxForm, BBoxRedirect, BBoxTemplate, FromBBoxForm};
-use alohomora::unbox::unbox;
-use alohomora::AlohomoraType;
+use sesame::pcon::PCon;
+use sesame_rocket::render::PConRender;
+use sesame::context::Context;
+use sesame_mysql::{from_value, PConRow};
+use sesame::fold::fold;
+use sesame::critical::{execute_critical, CriticalRegion, Signature};
+use sesame::policy::{AnyPolicyDyn, NoPolicy};
+use sesame::verified::{execute_verified, VerifiedRegion};
+use sesame_rocket::rocket::{get, post, PConForm, PConRedirect, PConTemplate, FromPConForm};
+use sesame::SesameType;
 
 use crate::apikey::ApiKey;
 use crate::backend::MySqlBackend;
@@ -27,67 +27,67 @@ use crate::helpers::{left_join, JoinIdx};
 use crate::policies::{AnswerAccessPolicy, ContextData};
 
 // TODO (allen): is this NoPolicy because it came from the user and we're going to write it (not for reading yet?)
-#[derive(Debug, FromBBoxForm)]
+#[derive(Debug, FromPConForm)]
 pub(crate) struct LectureQuestionSubmission {
-    answers: HashMap<u64, BBox<String, NoPolicy>>,
+    answers: HashMap<u64, PCon<String, NoPolicy>>,
 }
 
 // TODO (allen): these are NoPolicy because not sensitive information? but answer could be right?
-#[derive(BBoxRender, Clone)]
+#[derive(PConRender, Clone)]
 pub(crate) struct LectureQuestion {
-    pub id: BBox<u64, NoPolicy>,
-    pub prompt: BBox<String, NoPolicy>,
-    pub answer: BBox<Option<String>, NoPolicy>,
+    pub id: PCon<u64, NoPolicy>,
+    pub prompt: PCon<String, NoPolicy>,
+    pub answer: PCon<Option<String>, NoPolicy>,
 }
 
-// TODO (allen): do we need BBox's for context to our pages?
-#[derive(BBoxRender)]
+// TODO (allen): do we need PCon's for context to our pages?
+#[derive(PConRender)]
 pub(crate) struct LectureQuestionsContext {
-    pub lec_id: BBox<u8, NoPolicy>,
+    pub lec_id: PCon<u8, NoPolicy>,
     pub questions: Vec<LectureQuestion>,
     pub parent: String,
 }
 
-#[derive(BBoxRender, Clone, AlohomoraType)]
-#[alohomora_out_type(to_derive = [BBoxRender, Clone, Serialize])]
-//#[derive(BBoxRender, Clone)]
+#[derive(PConRender, Clone, SesameType)]
+#[sesame_out_type(to_derive = [PConRender, Clone, Serialize])]
+//#[derive(PConRender, Clone)]
 pub struct LectureAnswer {
-    pub id: BBox<u64, AnswerAccessPolicy>,
-    pub user: BBox<String, AnswerAccessPolicy>,
-    pub answer: BBox<String, AnswerAccessPolicy>,
-    pub time: BBox<String, AnswerAccessPolicy>,
-    pub grade: BBox<u64, AnswerAccessPolicy>,
+    pub id: PCon<u64, AnswerAccessPolicy>,
+    pub user: PCon<String, AnswerAccessPolicy>,
+    pub answer: PCon<String, AnswerAccessPolicy>,
+    pub time: PCon<String, AnswerAccessPolicy>,
+    pub grade: PCon<u64, AnswerAccessPolicy>,
 }
 
-// TODO (allen): do we need BBox's for context to our pages? and what kind of policy should they have?
-#[derive(BBoxRender)]
+// TODO (allen): do we need PCon's for context to our pages? and what kind of policy should they have?
+#[derive(PConRender)]
 pub struct LectureAnswersContext {
-    pub lec_id: BBox<u8, NoPolicy>,
-    pub answers: BBox<Vec<LectureAnswerOut>, AnswerAccessPolicy>,
+    pub lec_id: PCon<u8, NoPolicy>,
+    pub answers: PCon<Vec<LectureAnswerOut>, AnswerAccessPolicy>,
     pub parent: String,
 }
 
-#[derive(BBoxRender)]
+#[derive(PConRender)]
 pub struct NaiveLectureAnswersContext {
-    pub lec_id: BBox<u8, NoPolicy>,
+    pub lec_id: PCon<u8, NoPolicy>,
     pub answers: Vec<LectureAnswer>,
     pub parent: String,
 }
 
 // TODO (allen): these are NoPolicy because not sensitive user information?
-#[derive(BBoxRender, AlohomoraType)]
-#[alohomora_out_type(to_derive = [BBoxRender, Clone])]
+#[derive(PConRender, SesameType)]
+#[sesame_out_type(to_derive = [PConRender, Clone])]
 struct LectureListEntry {
-    id: BBox<u64, NoPolicy>,
-    label: BBox<String, NoPolicy>,
-    num_qs: BBox<u64, NoPolicy>,
+    id: PCon<u64, NoPolicy>,
+    label: PCon<String, NoPolicy>,
+    num_qs: PCon<u64, NoPolicy>,
     num_answered: u64,
 }
 
-// TODO (allen): do we need BBox's for context to our pages? and what kind of policy should they have?
-#[derive(BBoxRender)]
+// TODO (allen): do we need PCon's for context to our pages? and what kind of policy should they have?
+#[derive(PConRender)]
 struct LectureListContext {
-    admin: BBox<bool, NoPolicy>,
+    admin: PCon<bool, NoPolicy>,
     lectures: Vec<LectureListEntry>,
     parent: String,
 }
@@ -98,7 +98,7 @@ pub(crate) fn leclist(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     config: &State<Config>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec(
         "SELECT lectures.id, lectures.label, lec_qcount.qcount \
@@ -109,20 +109,21 @@ pub(crate) fn leclist(
     );
     drop(bg);
 
-    let admin: BBox<bool, NoPolicy> = apikey.user.into_ppr(PrivacyPureRegion::new(|email| {
+    let admin: PCon<bool, NoPolicy> = apikey.user.into_verified(VerifiedRegion::new(|email| {
         config.admins.contains(&email)
     }));
 
     let lecs: Vec<LectureListEntry> = res
         .into_iter()
-        .map(|r: Vec<BBox<Value, AnyPolicy>>| LectureListEntry {
-            id: from_value(r[0].clone()).unwrap(),
-            label: from_value(r[1].clone()).unwrap(),
-            num_qs: r[2]
-                .clone()
+        .map(|r: PConRow| LectureListEntry {
+            id: from_value(r.get(0).unwrap()).unwrap(),
+            label: from_value(r.get(1).unwrap()).unwrap(),
+            num_qs: r
+                .get(2)
+                .unwrap()
                 .specialize_policy()
                 .unwrap()
-                .into_ppr(PrivacyPureRegion::new(|v| match v {
+                .into_verified(VerifiedRegion::new(|v| match v {
                     Value::NULL => 0u64,
                     v => mysql::from_value(v),
                 })),
@@ -136,18 +137,18 @@ pub(crate) fn leclist(
         parent: "layout".into(),
     };
 
-    BBoxTemplate::render("leclist", &ctx, context)
+    PConTemplate::render("leclist", &ctx, context).unwrap()
 }
 
 #[get("/naive/<num>")]
 pub(crate) fn naive_answers(
     _admin: Admin,
-    num: BBox<u8, NoPolicy>,
+    num: PCon<u8, NoPolicy>,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
-    let key = num.clone().into_bbox::<u64, NoPolicy>();
+    let key = num.clone().into_pcon::<u64, NoPolicy>();
     let res = bg.prep_exec(
         "SELECT * FROM answers WHERE lec = ?",
         (key,),
@@ -159,15 +160,15 @@ pub(crate) fn naive_answers(
     let answers: Vec<LectureAnswer> = res
         .into_iter()
         .map(|r| LectureAnswer {
-            id: from_value(r[2].clone()).unwrap(),
-            user: from_value(r[0].clone()).unwrap(),
-            answer: from_value(r[3].clone()).unwrap(),
-            time: from_value(r[4].clone())
+            id: from_value(r.get(2).unwrap()).unwrap(),
+            user: from_value(r.get(0).unwrap()).unwrap(),
+            answer: from_value(r.get(3).unwrap()).unwrap(),
+            time: from_value(r.get(4).unwrap())
                 .unwrap()
-                .into_ppr(PrivacyPureRegion::new(|v: NaiveDateTime| {
+                .into_verified(VerifiedRegion::new(|v: NaiveDateTime| {
                     v.format("%Y-%m-%d %H:%M:%S").to_string()
                 })),
-            grade: from_value(r[5].clone()).unwrap(),
+            grade: from_value(r.get(5).unwrap()).unwrap(),
         })
         .collect();
 
@@ -176,18 +177,18 @@ pub(crate) fn naive_answers(
         answers,
         parent: "layout".into(),
     };
-    BBoxTemplate::render("answers", &ctx, context)
+    PConTemplate::render("answers", &ctx, context).unwrap()
 }
 
 #[get("/<num>")]
 pub(crate) fn composed_answers(
     _admin: Admin,
-    num: BBox<u8, NoPolicy>,
+    num: PCon<u8, NoPolicy>,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
-    let key = num.clone().into_bbox::<u64, NoPolicy>();
+    let key = num.clone().into_pcon::<u64, NoPolicy>();
     let res = bg.prep_exec(
         "SELECT * FROM answers WHERE lec = ?",
         (key,),
@@ -199,19 +200,19 @@ pub(crate) fn composed_answers(
     let answers: Vec<LectureAnswer> = res
         .into_iter()
         .map(|r| LectureAnswer {
-            id: from_value(r[2].clone()).unwrap(),
-            user: from_value(r[0].clone()).unwrap(),
-            answer: from_value(r[3].clone()).unwrap(),
-            time: from_value(r[4].clone())
+            id: from_value(r.get(2).unwrap()).unwrap(),
+            user: from_value(r.get(0).unwrap()).unwrap(),
+            answer: from_value(r.get(3).unwrap()).unwrap(),
+            time: from_value(r.get(4).unwrap())
                 .unwrap()
-                .into_ppr(PrivacyPureRegion::new(|v: NaiveDateTime| {
+                .into_verified(VerifiedRegion::new(|v: NaiveDateTime| {
                     v.format("%Y-%m-%d %H:%M:%S").to_string()
                 })),
-            grade: from_value(r[5].clone()).unwrap(),
+            grade: from_value(r.get(5).unwrap()).unwrap(),
         })
         .collect();
 
-    let outer_box_answers = fold(answers)
+    let outer_box_answers = fold::<dyn AnyPolicyDyn, _>(answers)
         .unwrap()
         .specialize_policy::<AnswerAccessPolicy>()
         .unwrap();
@@ -221,17 +222,17 @@ pub(crate) fn composed_answers(
         answers: outer_box_answers,
         parent: "layout".into(),
     };
-    BBoxTemplate::render("answers", &ctx, context)
+    PConTemplate::render("answers", &ctx, context).unwrap()
 }
 
 #[get("/discussion_leaders/<num>")]
 pub(crate) fn answers_for_discussion_leaders(
-    num: BBox<u8, NoPolicy>,
+    num: PCon<u8, NoPolicy>,
     apikey: ApiKey,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
-    let key = num.clone().into_bbox::<u64, NoPolicy>();
+) -> PConTemplate {
+    let key = num.clone().into_pcon::<u64, NoPolicy>();
 
     let is_discussion_leader = {
         let mut bg = backend.lock().unwrap();
@@ -259,19 +260,19 @@ pub(crate) fn answers_for_discussion_leaders(
     let answers: Vec<LectureAnswer> = res
         .into_iter()
         .map(|r| LectureAnswer {
-            id: from_value(r[2].clone()).unwrap(),
-            user: from_value(r[0].clone()).unwrap(),
-            answer: from_value(r[3].clone()).unwrap(),
-            time: from_value(r[4].clone())
+            id: from_value(r.get(2).unwrap()).unwrap(),
+            user: from_value(r.get(0).unwrap()).unwrap(),
+            answer: from_value(r.get(3).unwrap()).unwrap(),
+            time: from_value(r.get(4).unwrap())
                 .unwrap()
-                .into_ppr(PrivacyPureRegion::new(|v: NaiveDateTime| {
+                .into_verified(VerifiedRegion::new(|v: NaiveDateTime| {
                     v.format("%Y-%m-%d %H:%M:%S").to_string()
                 })),
-            grade: from_value(r[5].clone()).unwrap(),
+            grade: from_value(r.get(5).unwrap()).unwrap(),
         })
         .collect();
 
-    let outer_box_answers = fold(answers)
+    let outer_box_answers = fold::<dyn AnyPolicyDyn, _>(answers)
         .unwrap()
         .specialize_policy::<AnswerAccessPolicy>()
         .unwrap();
@@ -281,17 +282,17 @@ pub(crate) fn answers_for_discussion_leaders(
         answers: outer_box_answers,
         parent: "layout".into(),
     };
-    BBoxTemplate::render("answers", &ctx, context)
+    PConTemplate::render("answers", &ctx, context).unwrap()
 }
 
 #[get("/discussion_leaders/naive/<num>")]
 pub(crate) fn answers_for_discussion_leaders_naive(
-    num: BBox<u8, NoPolicy>,
+    num: PCon<u8, NoPolicy>,
     apikey: ApiKey,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
-    let key = num.clone().into_bbox::<u64, NoPolicy>();
+) -> PConTemplate {
+    let key = num.clone().into_pcon::<u64, NoPolicy>();
 
     let is_discussion_leader = {
         let mut bg = backend.lock().unwrap();
@@ -319,15 +320,15 @@ pub(crate) fn answers_for_discussion_leaders_naive(
     let answers: Vec<LectureAnswer> = res
         .into_iter()
         .map(|r| LectureAnswer {
-            id: from_value(r[2].clone()).unwrap(),
-            user: from_value(r[0].clone()).unwrap(),
-            answer: from_value(r[3].clone()).unwrap(),
-            time: from_value(r[4].clone())
+            id: from_value(r.get(2).unwrap()).unwrap(),
+            user: from_value(r.get(0).unwrap()).unwrap(),
+            answer: from_value(r.get(3).unwrap()).unwrap(),
+            time: from_value(r.get(4).unwrap())
                 .unwrap()
-                .into_ppr(PrivacyPureRegion::new(|v: NaiveDateTime| {
+                .into_verified(VerifiedRegion::new(|v: NaiveDateTime| {
                     v.format("%Y-%m-%d %H:%M:%S").to_string()
                 })),
-            grade: from_value(r[5].clone()).unwrap(),
+            grade: from_value(r.get(5).unwrap()).unwrap(),
         })
         .collect();
 
@@ -336,18 +337,18 @@ pub(crate) fn answers_for_discussion_leaders_naive(
         answers,
         parent: "layout".into(),
     };
-    BBoxTemplate::render("answers", &ctx, context)
+    PConTemplate::render("answers", &ctx, context).unwrap()
 }
 
 #[get("/<num>")]
 pub(crate) fn questions(
     apikey: ApiKey,
-    num: BBox<u8, NoPolicy>,
+    num: PCon<u8, NoPolicy>,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
-    let key = num.clone().into_bbox::<u64, NoPolicy>();
+    let key = num.clone().into_pcon::<u64, NoPolicy>();
 
     let answers_result = bg.prep_exec(
         "SELECT answers.* FROM answers WHERE answers.lec = ? AND answers.email = ?",
@@ -361,9 +362,19 @@ pub(crate) fn questions(
     );
     drop(bg);
 
-    let questions: BBox<Vec<Vec<Value>>, AnyPolicy> = execute_pure(
+    // left_join operates on whole rows, so flatten PConRow -> Vec<PConValue>.
+    let answers_result = answers_result
+        .into_iter()
+        .map(|r| r.unwrap())
+        .collect::<Vec<_>>();
+    let questions_result = questions_result
+        .into_iter()
+        .map(|r| r.unwrap())
+        .collect::<Vec<_>>();
+
+    let questions: PCon<Vec<Vec<Value>>, NoPolicy> = execute_verified::<dyn AnyPolicyDyn, _, _, _>(
         (questions_result, answers_result),
-        PrivacyPureRegion::new(|(questions, answers)| {
+        VerifiedRegion::new(|(questions, answers)| {
             let mut questions = left_join(
                 questions,
                 answers,
@@ -375,17 +386,27 @@ pub(crate) fn questions(
             questions
         }),
     )
+    .unwrap()
+    .specialize_policy::<NoPolicy>()
     .unwrap();
 
-    let questions: Vec<BBox<Vec<Value>, AnyPolicy>> = questions.fold_in();
+    let questions: Vec<PCon<Vec<Value>, NoPolicy>> = questions.fold_in();
     let questions = questions
         .into_iter()
-        .map(|r: BBox<Vec<Value>, AnyPolicy>| {
-            let r: Vec<BBox<Value, AnyPolicy>> = r.fold_in();
+        .map(|r: PCon<Vec<Value>, NoPolicy>| {
+            let r: Vec<PCon<Value, NoPolicy>> = r.fold_in();
+            // Policy is already specialized here, so convert the value in place
+            // rather than going through from_value (which expects AnyPolicy).
             LectureQuestion {
-                id: from_value(r[0].clone()).unwrap(),
-                prompt: from_value(r[1].clone()).unwrap(),
-                answer: from_value_or_null(r[2].clone()).unwrap(),
+                id: r[0]
+                    .clone()
+                    .into_verified(VerifiedRegion::new(mysql::from_value)),
+                prompt: r[1]
+                    .clone()
+                    .into_verified(VerifiedRegion::new(mysql::from_value)),
+                answer: r[2]
+                    .clone()
+                    .into_verified(VerifiedRegion::new(mysql::from_value)),
             }
         })
         .collect();
@@ -395,19 +416,19 @@ pub(crate) fn questions(
         parent: "layout".into(),
     };
 
-    BBoxTemplate::render("questions", &ctx, context)
+    PConTemplate::render("questions", &ctx, context).unwrap()
 }
 
 #[post("/<num>", data = "<data>")]
 pub(crate) fn questions_submit(
     apikey: ApiKey,
-    num: BBox<u8, NoPolicy>,
-    data: BBoxForm<LectureQuestionSubmission>,
+    num: PCon<u8, NoPolicy>,
+    data: PConForm<LectureQuestionSubmission>,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     config: &State<Config>,
     context: Context<ContextData>,
-) -> BBoxRedirect {
-    let num = num.into_bbox::<u64, NoPolicy>();
+) -> PConRedirect {
+    let num = num.into_pcon::<u64, NoPolicy>();
     let ts: mysql::Value = Local::now().naive_local().into();
     let grade: mysql::Value = 0.into();
 
@@ -420,8 +441,8 @@ pub(crate) fn questions_submit(
                 num.clone(),
                 *id,
                 answer.clone(),
-                ts.clone(),
-                grade.clone(),
+                PCon::new(ts.clone(), NoPolicy {}),
+                PCon::new(grade.clone(), NoPolicy {}),
             ),
             context.clone(),
         );
@@ -429,10 +450,10 @@ pub(crate) fn questions_submit(
 
     if config.send_emails {
         let data = (data.answers.clone(), num, apikey.user);
-        let result = unbox(
+        let result = execute_critical(
             data,
             context,
-            PrivacyCriticalRegion::new(
+            CriticalRegion::new(
                 |(answers, num, user): (HashMap<u64, String>, u64, String), _| {
                     let answer_log = format!(
                         "{}",
@@ -466,5 +487,5 @@ pub(crate) fn questions_submit(
     }
     drop(bg);
 
-    BBoxRedirect::to2("/leclist")
+    PConRedirect::to2("/leclist")
 }

@@ -13,12 +13,13 @@ use crate::backend::MySqlBackend;
 use crate::config::Config;
 use crate::policies::ContextData;
 
-use alohomora::bbox::{BBox, BBoxRender};
-use alohomora::context::Context;
-use alohomora::db::from_value;
-use alohomora::policy::AnyPolicy;
-use alohomora::pure::PrivacyPureRegion;
-use alohomora::rocket::{get, BBoxRequest, BBoxRequestOutcome, BBoxTemplate, FromBBoxRequest};
+use sesame::pcon::PCon;
+use sesame_rocket::render::PConRender;
+use sesame::context::Context;
+use sesame_mysql::{from_value, PConRow};
+use sesame::policy::AnyPolicy;
+use sesame::verified::VerifiedRegion;
+use sesame_rocket::rocket::{get, PConRequest, PConRequestOutcome, PConTemplate, FromPConRequest};
 
 pub(crate) struct Manager;
 
@@ -28,16 +29,16 @@ pub(crate) enum ManagerError {
 }
 
 #[rocket::async_trait]
-impl<'a, 'r> FromBBoxRequest<'a, 'r> for Manager {
-    type BBoxError = ManagerError;
+impl<'a, 'r> FromPConRequest<'a, 'r> for Manager {
+    type PConError = ManagerError;
 
-    async fn from_bbox_request(
-        request: BBoxRequest<'a, 'r>,
-    ) -> BBoxRequestOutcome<Self, Self::BBoxError> {
+    async fn from_pcon_request(
+        request: PConRequest<'a, 'r>,
+    ) -> PConRequestOutcome<Self, Self::PConError> {
         let apikey = request.guard::<ApiKey>().await.unwrap();
         let cfg = request.guard::<&State<Config>>().await.unwrap();
 
-        let manager = apikey.user.ppr(PrivacyPureRegion::new(|user: &String| {
+        let manager = apikey.user.verified(VerifiedRegion::new(|user: &String| {
             if cfg.managers.contains(&user) {
                 Some(Manager)
             } else {
@@ -53,31 +54,31 @@ impl<'a, 'r> FromBBoxRequest<'a, 'r> for Manager {
     }
 }
 
-#[derive(BBoxRender)]
+#[derive(PConRender)]
 pub(crate) struct Aggregate<T: Serialize> {
-    property: BBox<T, AnyPolicy>,
-    average: BBox<f64, AnyPolicy>,
+    property: PCon<T, AnyPolicy>,
+    average: PCon<f64, AnyPolicy>,
 }
 
-#[derive(BBoxRender)]
+#[derive(PConRender)]
 struct AggregateGenderContext {
     aggregate: Vec<Aggregate<String>>,
     parent: String,
 }
 
-#[derive(BBoxRender)]
+#[derive(PConRender)]
 struct AggregateRemoteContext {
     aggregate: Vec<Aggregate<bool>>,
     parent: String,
 }
 
 fn transform<T: Serialize + FromValue>(
-    agg: Vec<Vec<BBox<mysql::Value, AnyPolicy>>>,
+    agg: Vec<PConRow>,
 ) -> Vec<Aggregate<T>> {
     agg.into_iter()
         .map(|r| Aggregate {
-            property: from_value(r[0].clone()).unwrap(),
-            average: from_value(r[1].clone()).unwrap(),
+            property: from_value(r.get(0).unwrap()).unwrap(),
+            average: from_value(r.get(1).unwrap()).unwrap(),
         })
         .collect()
 }
@@ -87,7 +88,7 @@ pub(crate) fn get_aggregate_gender(
     _manager: Manager,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
     let grades = bg.prep_exec("SELECT * from agg_gender", (), context.clone());
     drop(bg);
@@ -97,7 +98,7 @@ pub(crate) fn get_aggregate_gender(
         parent: String::from("layout"),
     };
 
-    BBoxTemplate::render("manage/aggregate", &ctx, context)
+    PConTemplate::render("manage/aggregate", &ctx, context).unwrap()
 }
 
 #[get("/remote_buggy")]
@@ -105,7 +106,7 @@ pub(crate) fn get_aggregate_remote_buggy(
     _manager: Manager,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
     let grades = bg.prep_exec("SELECT * from agg_remote", (), context.clone());
     drop(bg);
@@ -115,7 +116,7 @@ pub(crate) fn get_aggregate_remote_buggy(
         parent: String::from("layout"),
     };
 
-    BBoxTemplate::render("manage/aggregate", &ctx, context)
+    PConTemplate::render("manage/aggregate", &ctx, context).unwrap()
 }
 
 #[get("/remote")]
@@ -123,7 +124,7 @@ pub(crate) fn get_aggregate_remote(
     _manager: Manager,
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
     let grades = bg.prep_exec(
         "SELECT * from agg_remote WHERE ucount >= 10",
@@ -137,16 +138,16 @@ pub(crate) fn get_aggregate_remote(
         parent: String::from("layout"),
     };
 
-    BBoxTemplate::render("manage/aggregate", &ctx, context)
+    PConTemplate::render("manage/aggregate", &ctx, context).unwrap()
 }
 
-#[derive(BBoxRender, Clone)]
+#[derive(PConRender)]
 pub(crate) struct InfoForEmployers {
-    email: BBox<String, AnyPolicy>,
-    average_grade: BBox<f64, AnyPolicy>,
+    email: PCon<String, AnyPolicy>,
+    average_grade: PCon<f64, AnyPolicy>,
 }
 
-#[derive(BBoxRender)]
+#[derive(PConRender)]
 struct InfoForEmployersContext {
     users: Vec<InfoForEmployers>,
     parent: String,
@@ -158,7 +159,7 @@ pub(crate) fn get_list_for_employers(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     _config: &State<Config>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec(
         "SELECT * from employers_release WHERE consent = 1",
@@ -170,8 +171,8 @@ pub(crate) fn get_list_for_employers(
     let users = res
         .into_iter()
         .map(|r| InfoForEmployers {
-            email: from_value(r[0].clone()).unwrap(),
-            average_grade: from_value(r[1].clone()).unwrap(),
+            email: from_value(r.get(0).unwrap()).unwrap(),
+            average_grade: from_value(r.get(1).unwrap()).unwrap(),
         })
         .collect();
 
@@ -179,7 +180,7 @@ pub(crate) fn get_list_for_employers(
         users: users,
         parent: "layout".into(),
     };
-    BBoxTemplate::render("manage/users", &ctx, context)
+    PConTemplate::render("manage/users", &ctx, context).unwrap()
 }
 
 #[get("/employers_buggy")]
@@ -188,7 +189,7 @@ pub(crate) fn get_list_for_employers_buggy(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     _config: &State<Config>,
     context: Context<ContextData>,
-) -> BBoxTemplate {
+) -> PConTemplate {
     let mut bg = backend.lock().unwrap();
     let res = bg.prep_exec("SELECT * from employers_release", (), context.clone());
     drop(bg);
@@ -196,8 +197,8 @@ pub(crate) fn get_list_for_employers_buggy(
     let users = res
         .into_iter()
         .map(|r| InfoForEmployers {
-            email: from_value(r[0].clone()).unwrap(),
-            average_grade: from_value(r[1].clone()).unwrap(),
+            email: from_value(r.get(0).unwrap()).unwrap(),
+            average_grade: from_value(r.get(1).unwrap()).unwrap(),
         })
         .collect();
 
@@ -205,5 +206,5 @@ pub(crate) fn get_list_for_employers_buggy(
         users: users,
         parent: "layout".into(),
     };
-    BBoxTemplate::render("manage/users", &ctx, context)
+    PConTemplate::render("manage/users", &ctx, context).unwrap()
 }

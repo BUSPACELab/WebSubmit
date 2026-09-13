@@ -13,11 +13,11 @@ ndarray = "0.15.6"
 sha2 = "0.10.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-alohomora_derive = { path = "../../../alohomora_derive" }
-alohomora_sandbox = { path = "../../../alohomora_sandbox" }
+sesame_derive = { git = "https://github.com/brownsys/Sesame", branch = "main" }
+sesame_sandbox = { git = "https://github.com/brownsys/Sesame", branch = "main" }
 
 [build-dependencies]
-alohomora_build = { path = "../../../alohomora_build" }
+sesame_build = { git = "https://github.com/brownsys/Sesame", branch = "main" }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -31,4 +31,4 @@ sandboxes = [
 
 [features]
 default = []
-sandbox_timing = ["alohomora_sandbox/sandbox_timing"]
+sandbox_timing = ["sesame_sandbox/sandbox_timing"]

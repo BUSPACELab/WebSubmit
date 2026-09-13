@@ -1,8 +1,9 @@
 use crate::config::Config;
 use crate::policies::ContextData;
-use alohomora::context::UnprotectedContext;
-use alohomora::policy::{schema_policy, AnyPolicy, Policy, PolicyAnd, Reason, SchemaPolicy};
-use alohomora::AlohomoraType;
+use sesame::context::UnprotectedContext;
+use sesame::policy::{Reason, SimplePolicy};
+use sesame_mysql::{schema_policy, SchemaPolicy};
+use sesame::SesameTypeOut;
 
 // Access control policy.
 #[schema_policy(table = "users", column = 5)] // gender
@@ -13,13 +14,13 @@ pub struct UserProfilePolicy {
     owner: Option<String>, // even if no owner, admins may access
 }
 
-impl Policy for UserProfilePolicy {
-    fn name(&self) -> String {
+impl SimplePolicy for UserProfilePolicy {
+    fn simple_name(&self) -> String {
         "UserProfilePolicy".to_string()
     }
 
-    fn check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
-        type ContextDataOut = <ContextData as AlohomoraType>::Out;
+    fn simple_check(&self, context: &UnprotectedContext, _reason: Reason) -> bool {
+        type ContextDataOut = <ContextData as SesameTypeOut>::Out;
         let context: &ContextDataOut = context.downcast_ref().unwrap();
 
         let user: &Option<String> = &context.user;
@@ -46,26 +47,11 @@ impl Policy for UserProfilePolicy {
         return false;
     }
 
-    fn join(&self, other: AnyPolicy) -> Result<AnyPolicy, ()> {
-        if other.is::<UserProfilePolicy>() {
-            let other = other.specialize::<UserProfilePolicy>().unwrap();
-            Ok(AnyPolicy::new(self.join_logic(other)?))
-        } else {
-            Ok(AnyPolicy::new(PolicyAnd::new(
-                AnyPolicy::new(self.clone()),
-                other,
-            )))
-        }
-    }
 
-    fn join_logic(&self, p2: Self) -> Result<Self, ()> {
-        let comp_owner: Option<String>;
-        if self.owner.eq(&p2.owner) {
-            comp_owner = self.owner.clone();
-        } else {
-            comp_owner = None;
+    fn simple_join_direct(&mut self, other: &mut Self) {
+        if !self.owner.eq(&other.owner) {
+            self.owner = None;
         }
-        Ok(UserProfilePolicy { owner: comp_owner })
     }
 }
 

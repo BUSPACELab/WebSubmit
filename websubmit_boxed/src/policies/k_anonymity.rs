@@ -1,5 +1,6 @@
-use alohomora::context::UnprotectedContext;
-use alohomora::policy::{schema_policy, AnyPolicy, Policy, PolicyAnd, Reason, SchemaPolicy};
+use sesame::context::UnprotectedContext;
+use sesame::policy::{Reason, SimplePolicy};
+use sesame_mysql::{schema_policy, SchemaPolicy};
 use std::cmp;
 
 // K-anonymity policy.
@@ -12,31 +13,18 @@ pub struct KAnonymityPolicy {
 
 const MIN_K: u64 = 10;
 
-impl Policy for KAnonymityPolicy {
-    fn name(&self) -> String {
+impl SimplePolicy for KAnonymityPolicy {
+    fn simple_name(&self) -> String {
         "KAnonymityPolicy".to_string()
     }
 
-    fn check(&self, _context: &UnprotectedContext, _reason: Reason) -> bool {
+    fn simple_check(&self, _context: &UnprotectedContext, _reason: Reason) -> bool {
         self.count >= MIN_K
     }
 
-    fn join(&self, other: AnyPolicy) -> Result<AnyPolicy, ()> {
-        if other.is::<KAnonymityPolicy>() {
-            let other = other.specialize::<KAnonymityPolicy>().unwrap();
-            Ok(AnyPolicy::new(self.join_logic(other)?))
-        } else {
-            Ok(AnyPolicy::new(PolicyAnd::new(
-                AnyPolicy::new(self.clone()),
-                other,
-            )))
-        }
-    }
 
-    fn join_logic(&self, p2: Self) -> Result<Self, ()> {
-        Ok(KAnonymityPolicy {
-            count: cmp::min(self.count, p2.count),
-        })
+    fn simple_join_direct(&mut self, other: &mut Self) {
+        self.count = cmp::min(self.count, other.count);
     }
 }
 

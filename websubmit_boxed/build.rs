@@ -1,5 +1,6 @@
-extern crate alohomora_build;
+use sesame_build::{Options, SesameBuilder};
 
 fn main() {
-    alohomora_build::alohomora_build(false, &["../websubmit_boxed_sandboxes"]);
+    let builder = SesameBuilder::new(Options::new().verbose(false));
+    builder.unwrap().link_sandbox("../websubmit_boxed_sandboxes");
 }

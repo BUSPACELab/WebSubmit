@@ -1,16 +1,16 @@
 use crate::policies::ContextData;
-use alohomora::context::Context;
-use alohomora::db::{BBoxConn, BBoxOpts, BBoxParams, BBoxStatement, BBoxValue};
+use sesame::context::Context;
+use sesame_mysql::{SesameConn, PConOpts, PConParams, PConRow, PConStatement};
 use slog::{debug, o, warn};
 use std::collections::HashMap;
 use std::error::Error;
 use std::result::Result;
 
 pub struct MySqlBackend {
-    pub handle: BBoxConn,
+    pub handle: SesameConn,
     pub log: slog::Logger,
     _schema: String,
-    prep_stmts: HashMap<String, BBoxStatement>,
+    prep_stmts: HashMap<String, PConStatement>,
     db_user: String,
     db_password: String,
     db_name: String,
@@ -37,9 +37,9 @@ impl MySqlBackend {
         );
         // let password = "";
         // println!("password is `{}`", password);
-        let mut db = BBoxConn::new(
+        let mut db = SesameConn::new(
             // this is the user and password from the config.toml file
-            BBoxOpts::from_url(&format!("mysql://{}:{}@127.0.0.1/", user, password)).unwrap(),
+            PConOpts::from_url(&format!("mysql://{}:{}@127.0.0.1/", user, password)).unwrap(),
         )
         .unwrap();
         assert_eq!(db.ping(), true);
@@ -72,8 +72,8 @@ impl MySqlBackend {
     }
 
     fn reconnect(&mut self) {
-        self.handle = BBoxConn::new(
-            BBoxOpts::from_url(&format!(
+        self.handle = SesameConn::new(
+            PConOpts::from_url(&format!(
                 "mysql://{}:{}@127.0.0.1/{}",
                 self.db_user, self.db_password, self.db_name
             ))
@@ -82,12 +82,16 @@ impl MySqlBackend {
         .unwrap();
     }
 
-    pub fn prep_exec<P: Into<BBoxParams>>(
+    pub fn prep_exec<P: Into<PConParams>>(
         &mut self,
         sql: &str,
         params: P,
         context: Context<ContextData>,
-    ) -> Vec<Vec<BBoxValue>> {
+    ) -> Vec<PConRow> {
+        if !self.handle.ping() {
+            self.reconnect();
+            self.prep_stmts.clear();
+        }
         if !self.prep_stmts.contains_key(sql) {
             let stmt = self
                 .handle
@@ -96,42 +100,42 @@ impl MySqlBackend {
             self.prep_stmts.insert(sql.to_owned(), stmt);
         }
 
-        let params: BBoxParams = params.into();
-        loop {
-            match self.handle.exec_iter(
-                self.prep_stmts[sql].clone(),
-                params.clone(),
-                context.clone(),
-            ) {
-                Err(e) => {
-                    warn!(
-                        self.log,
-                        "query \'{}\' failed ({}), reconnecting to database", sql, e
-                    );
-                }
-                Ok(res) => {
-                    let mut rows = vec![];
-                    for row in res {
-                        rows.push(row.unwrap().unwrap());
-                    }
-                    //debug!(self.log, "executed query {}, got {} rows", sql, rows.len());
-                    return rows;
-                }
+        // PConParams is not Clone in sesame, so the query cannot be replayed with the
+        // same params. Reconnect up front instead of retrying after a failure.
+        let params: PConParams = params.into();
+        match self
+            .handle
+            .exec_iter(self.prep_stmts[sql].clone(), params, context.clone())
+        {
+            Err(e) => {
+                warn!(self.log, "query \'{}\' failed ({})", sql, e);
+                panic!("query \'{}\' failed ({})", sql, e);
             }
-            self.reconnect();
+            Ok(res) => {
+                let mut rows = vec![];
+                for row in res {
+                    rows.push(row.unwrap());
+                }
+                //debug!(self.log, "executed query {}, got {} rows", sql, rows.len());
+                return rows;
+            }
         }
     }
 
-    fn do_insert<P: Into<BBoxParams>>(
+    fn do_insert<P: Into<PConParams>>(
         &mut self,
         table: &str,
         vals: P,
         replace: bool,
         context: Context<ContextData>,
     ) {
-        let vals: BBoxParams = vals.into();
+        if !self.handle.ping() {
+            self.reconnect();
+            self.prep_stmts.clear();
+        }
+        let vals: PConParams = vals.into();
         let mut param_count = 0;
-        if let BBoxParams::Positional(vec) = &vals {
+        if let PConParams::Positional(vec) = &vals {
             param_count = vec.len();
         }
 
@@ -145,19 +149,17 @@ impl MySqlBackend {
                 .collect::<Vec<&str>>()
                 .join(",")
         );
-        while let Err(e) = self
-            .handle
-            .exec_drop(q.clone(), vals.clone(), context.clone())
-        {
+        // See prep_exec: params cannot be cloned, so this cannot be replayed.
+        if let Err(e) = self.handle.exec_drop(q.clone(), vals, context.clone()) {
             warn!(
                 self.log,
-                "failed to insert into {}, query {} ({}), reconnecting to database", table, q, e
+                "failed to insert into {}, query {} ({})", table, q, e
             );
-            self.reconnect();
+            panic!("failed to insert into {} ({})", table, e);
         }
     }
 
-    pub fn insert<P: Into<BBoxParams>>(
+    pub fn insert<P: Into<PConParams>>(
         &mut self,
         table: &str,
         vals: P,
@@ -166,7 +168,7 @@ impl MySqlBackend {
         self.do_insert(table, vals, false, context);
     }
 
-    pub fn replace<P: Into<BBoxParams>>(
+    pub fn replace<P: Into<PConParams>>(
         &mut self,
         table: &str,
         vals: P,

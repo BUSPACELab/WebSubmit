@@ -1,5 +1,6 @@
-use alohomora_build::alohomora_build;
+use sesame_build::{Options, SesameBuilder};
 
 fn main() {
-    alohomora_build(false, &[]);
+    let builder = SesameBuilder::new(Options::new().verbose(true).allow_sandbox_printing(true));
+    builder.unwrap().build_sandbox();
 }

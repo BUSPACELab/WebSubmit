@@ -6,7 +6,9 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-alohomora = { path = "../../../alohomora", default_features = false, features = ["derive"] }
+sesame = { git = "https://github.com/brownsys/Sesame", branch = "main", default-features = false, features = ["derive"] }
+sesame_mysql = { git = "https://github.com/brownsys/Sesame", branch = "main", default-features = false, features = ["derive"] }
+sesame_rocket = { git = "https://github.com/brownsys/Sesame", branch = "main", default-features = false, features = ["derive", "mysql"] }
 chrono = { version = "0.4.0", features = ["serde"] }
 clap = "2.33.0"
 lazy_static = "1.4.0"
@@ -37,4 +39,4 @@ features = ["dir_source"]
 version = "3.5.5"
 
 [build-dependencies]
-alohomora_build = { path = "../../../alohomora_build" }
+sesame_build = { git = "https://github.com/brownsys/Sesame", branch = "main" }

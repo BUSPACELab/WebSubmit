@@ -1,0 +1,7 @@
+# The e2e tests share one database and one seeded fixture, so they have to run
+# one at a time. libtest reads RUST_TEST_THREADS, and cargo passes this
+# environment on to the test binaries it runs.
+#
+# `force` is left off, so `RUST_TEST_THREADS=4 cargo test` still overrides it.
+[env]
+RUST_TEST_THREADS = "1"

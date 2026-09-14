@@ -1,20 +1,23 @@
-use crate::backend::MySqlBackend;
-use crate::config::Config;
-use crate::policies::ContextData;
+use std::sync::{Arc, Mutex};
+
+use sesame::SesameTypeOut;
 use sesame::context::{Context, UnprotectedContext};
 use sesame::policy::{Reason, SimplePolicy};
 use sesame_mysql::{schema_policy, SchemaPolicy};
-use sesame::SesameTypeOut;
-use std::sync::{Arc, Mutex};
+
+use crate::config::Config;
+use crate::db::MySqlBackend;
+use crate::policies::ContextData;
 
 // Access control policy.
-#[schema_policy(table = "answers", column = 0)] // email
-#[schema_policy(table = "answers", column = 1)] // lec
-#[schema_policy(table = "answers", column = 2)] // q
-#[schema_policy(table = "answers", column = 3)] // answer
-#[schema_policy(table = "answers", column = 4)] // submitted_at
-#[schema_policy(table = "answers", column = 5)]
-// grade, WHY CAN DISCUSSION LEADER SEE GRADE
+#[schema_policy(table = "answers", column = 2)] // lec
+#[schema_policy(table = "answers", column = 3)] // question_id
+#[schema_policy(table = "answers", column = 4)] // answer
+#[schema_policy(table = "answers", column = 5)] // submitted_at
+#[schema_policy(table = "questions_with_answers", column = 7)] // lec
+#[schema_policy(table = "questions_with_answers", column = 8)] // question_id
+#[schema_policy(table = "questions_with_answers", column = 9)] // answer
+#[schema_policy(table = "questions_with_answers", column = 10)] // submitted_at
 // We can add multiple #[schema_policy(...)] definitions
 // here to reuse the policy across tables/columns.
 #[derive(Clone)]
@@ -71,8 +74,8 @@ impl SimplePolicy for AnswerAccessPolicy {
         // I am a discussion leader.
         if let Some(lec_id) = self.lec_id {
             let mut bg = db.lock().unwrap();
-            let vec = bg.prep_exec(
-                "SELECT * FROM discussion_leaders WHERE lec = ? AND email = ?",
+            let vec = bg.query_presenters(
+                ("lecture_id", "email"),
                 (lec_id, user.clone()),
                 Context::empty(),
             );
@@ -81,7 +84,6 @@ impl SimplePolicy for AnswerAccessPolicy {
 
         return false;
     }
-
 
     fn simple_join_direct(&mut self, other: &mut Self) {
         if !self.owner.eq(&other.owner) {
@@ -94,13 +96,27 @@ impl SimplePolicy for AnswerAccessPolicy {
 }
 
 impl SchemaPolicy for AnswerAccessPolicy {
-    fn from_row(_table: &str, row: &Vec<mysql::Value>) -> Self
+    fn from_row(table: &str, row: &Vec<mysql::Value>) -> Self
     where
         Self: Sized,
     {
-        AnswerAccessPolicy::new(
-            mysql::from_value(row[0].clone()),
-            mysql::from_value(row[1].clone()),
-        )
+        match table {
+            // answers: (id, email, lec, question_id, answer, submitted_at)
+            "answers" => AnswerAccessPolicy::new(
+                mysql::from_value(row[1].clone()),
+                mysql::from_value(row[2].clone()),
+            ),
+            // The view pairs a question with a user, so the row belongs to that
+            // user and lecture even when the outer join produced no answer and
+            // the answer columns are all NULL.
+            "questions_with_answers" => AnswerAccessPolicy::new(
+                mysql::from_value(row[4].clone()),
+                mysql::from_value(row[1].clone()),
+            ),
+            table => panic!(
+                "AnswerAccessPolicy registered on unexpected table '{}'",
+                table
+            ),
+        }
     }
 }

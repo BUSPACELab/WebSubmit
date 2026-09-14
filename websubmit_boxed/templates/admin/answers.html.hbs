@@ -1,0 +1,21 @@
+{{#*inline "page"}}
+    <h1>Lecture {{{ lec_id }}} answers:</h1>
+
+    <table>
+      <tr>
+        <th>Email</th>
+        <th>ID</th>
+        <th>Answer</th>
+        <th>Submission time</th>
+      </tr>
+      {{#each answers}}
+      <tr>
+        <td>{{{ this.email }}}</td>
+        <td>{{{ this.question_id }}}</td>
+        <td>{{{ this.answer }}}</td>
+        <td>{{{ this.submitted_at }}}</td>
+      </tr>
+      {{/each}}
+    </table>
+{{/inline}}
+{{~> layout~}}

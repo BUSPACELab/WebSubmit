@@ -1,25 +1,22 @@
 use std::sync::{Arc, Mutex};
 
+use rocket::State;
 use rocket::http::Status;
 use rocket::outcome::IntoOutcome;
-use rocket::State;
-
-use sesame::pcon::PCon;
-use sesame::context::Context;
-use sesame_mysql::from_value;
-use sesame::policy::NoPolicy;
-use sesame_rocket::rocket::{PConRequest, PConRequestOutcome, FromPConRequest};
 use sesame::SesameType;
+use sesame::context::Context;
+use sesame::pcon::PCon;
+use sesame_rocket::rocket::{PConRequest, PConRequestOutcome, FromPConRequest};
 
-use crate::backend::MySqlBackend;
 use crate::config::Config;
-use crate::policies::QueryableOnly;
+use crate::db::MySqlBackend;
+use crate::policies::{QueryableOnly, UserEmailPolicy};
 
 // Custom developer defined payload attached to every context.
 #[derive(SesameType, Clone)]
 #[sesame_out_type(verbatim = [db, config])]
 pub struct ContextData {
-    pub user: Option<PCon<String, NoPolicy>>,
+    pub user: Option<PCon<String, UserEmailPolicy>>,
     pub db: Arc<Mutex<MySqlBackend>>,
     pub config: Config,
 }
@@ -42,17 +39,13 @@ impl<'a, 'r> FromPConRequest<'a, 'r> for ContextData {
             Some(apikey) => {
                 let apikey = apikey.value().to_owned();
                 let mut bg = db.lock().unwrap();
-                let res = bg.prep_exec(
-                    "SELECT * FROM users WHERE apikey = ?",
+                let res = bg.query_users(
+                    "apikey",
                     (apikey,),
                     Context::empty(),
                 );
                 drop(bg);
-                if res.len() > 0 {
-                    Some(from_value(res[0].get(0).unwrap()).unwrap())
-                } else {
-                    None
-                }
+                res.into_iter().next().map(|user| user.email)
             }
         };
 

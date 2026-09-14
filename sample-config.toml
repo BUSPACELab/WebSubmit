@@ -1,13 +1,13 @@
 # short class ID (human readable)
 class = "CSCI 2390"
+# MySQL database name
+db_name = "myclass"
 # MySQL database user
 db_user = "root"
 # MySQL database password
 db_password = "password"
 # list email addresses whose API keys get admin access
 admins = ["babman@bu.edu", "malte@cs.brown.edu"]
-# list email addresses whose API keys get manager access
-managers = ["babman@bu.edu", "malte@cs.brown.edu"]
 # list email addresses who should receive notification emails
 staff = ["babman@bu.edu", "malte@cs.brown.edu"]
 # custom template directory
@@ -18,5 +18,15 @@ resource_dir = "/tmp/websubmit_boxed"
 secret = "SECRET"
 # whether to send emails (set to false for development)
 send_emails = false
+# SMTP server used to send emails
+smtp_server = "smtp.example.com"
+# SMTP server port (587 submission/STARTTLS, 465 implicit TLS, 25 plain relay)
+smtp_port = 587
+# SMTP user; leave empty to use an unauthenticated relay
+smtp_user = ""
+# SMTP password
+smtp_password = ""
+# address that emails are sent from
+smtp_from = "no-reply@example.com"
 # whether to reset the db (set to false for production)
 prime = true

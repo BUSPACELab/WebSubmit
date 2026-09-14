@@ -11,8 +11,7 @@ sesame_mysql = { git = "https://github.com/brownsys/Sesame", branch = "main", de
 sesame_rocket = { git = "https://github.com/brownsys/Sesame", branch = "main", default-features = false, features = ["derive", "mysql"] }
 chrono = { version = "0.4.0", features = ["serde"] }
 clap = "2.33.0"
-lettre = "0.9.2"
-lettre_email = "0.9.2"
+lettre = { version = "0.10", default-features = false, features = ["builder", "smtp-transport", "native-tls", "hostname", "pool"] }
 mysql = "21.0.2"
 mysql_common = "0.22"
 rand = "0.8.4"

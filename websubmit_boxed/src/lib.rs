@@ -1,25 +1,18 @@
-use sesame_rocket::rocket::{routes, SesameRocket, SesameRoute};
-use rocket::fs::FileServer;
-use rocket::Build;
-use rocket_dyn_templates::Template;
-use slog::o;
 use std::sync::{Arc, Mutex};
 
-mod admin;
-mod apikey;
-mod args;
-mod backend;
-mod config;
-mod email;
-mod grades;
-mod helpers;
-mod index;
-mod login;
-mod manage;
-mod policies;
-mod questions;
+use rocket::Build;
+use rocket::fs::FileServer;
+use rocket_dyn_templates::Template;
+use sesame_rocket::rocket::{routes, SesameRocket, SesameRoute};
+use slog::o;
 
-pub use args::parse_args;
+mod config;
+mod db;
+mod email;
+mod guards;
+mod models;
+mod policies;
+mod routes;
 
 fn new_logger() -> slog::Logger {
     use slog::Drain;
@@ -28,14 +21,14 @@ fn new_logger() -> slog::Logger {
     Logger::root(Mutex::new(term_full()).fuse(), o!())
 }
 
-pub fn make_rocket(args: args::Args) -> SesameRocket<Build> {
-    let config = args.config;
+pub use config::Config;
 
+pub fn make_rocket(config: Config) -> SesameRocket<Build> {
     let backend = Arc::new(Mutex::new(
-        backend::MySqlBackend::new(
+        db::MySqlBackend::new(
             &config.db_user,
             &config.db_password,
-            &format!("{}", args.class),
+            &config.db_name,
             Some(new_logger()),
             config.prime,
         )
@@ -71,42 +64,42 @@ pub fn make_rocket(args: args::Args) -> SesameRocket<Build> {
             "/js",
             SesameRoute::from(FileServer::from(format!("{}/js", resource_dir))),
         )
-        .mount("/", routes![index::index])
+        .mount("/", routes![routes::index::index])
+        .mount("/login", routes![routes::index::login])
+        .mount("/apikey/generate", routes![routes::apikey::generate::generate])
+        .mount("/apikey/check", routes![routes::apikey::check::check])
+        .mount("/leclist", routes![routes::leclist::leclist])
         .mount(
             "/questions",
-            routes![questions::questions, questions::questions_submit],
-        )
-        .mount("/apikey/check", routes![apikey::check])
-        .mount("/apikey/generate", routes![apikey::generate])
-        .mount(
-            "/grades",
-            routes![grades::grades, grades::editg, grades::editg_submit],
-        )
-        .mount("/answers", routes![
-            questions::composed_answers, 
-            questions::naive_answers, 
-            questions::answers_for_discussion_leaders,
-            questions::answers_for_discussion_leaders_naive,
-        ])
-        .mount("/leclist", routes![questions::leclist])
-        .mount("/login", routes![login::login])
-        .mount(
-            "/admin/lec/add",
-            routes![admin::lec_add, admin::lec_add_submit],
-        )
-        .mount("/admin/users", routes![admin::get_registered_users])
-        .mount(
-            "/admin/lec",
-            routes![admin::lec, admin::addq, admin::editq, admin::editq_submit],
-        )
-        .mount(
-            "/manage",
             routes![
-                manage::get_aggregate_gender,
-                manage::get_aggregate_remote,
-                manage::get_aggregate_remote_buggy,
-                manage::get_list_for_employers,
-                manage::get_list_for_employers_buggy
+                routes::students::questions::questions,
+                routes::students::questions::questions_submit
             ],
         )
+        .mount(
+            "/answers",
+            routes![
+                routes::admin::answers::composed_answers,
+                routes::answers::presenters::answers_for_presenters
+            ],
+        )
+        .mount(
+            "/admin/lec/add",
+            routes![
+                routes::admin::lectures::lec_add,
+                routes::admin::lectures::lec_add_submit
+            ],
+        )
+        .mount("/admin/lec/edit", routes![routes::admin::lectures::lec_edit_submit])
+        .mount(
+            "/admin/lec",
+            routes![
+                routes::admin::lectures::lec,
+                routes::admin::questions::addq,
+                routes::admin::questions::editq,
+                routes::admin::questions::editq_submit
+            ],
+        )
+        .mount("/admin/users", routes![routes::admin::users::get_registered_users])
+        .mount("/admin/grading", routes![routes::admin::users::grading])
 }

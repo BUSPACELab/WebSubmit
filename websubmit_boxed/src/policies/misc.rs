@@ -1,10 +1,10 @@
+use mysql::Value;
+use rocket::Request;
+use rocket::http::Cookie;
 use sesame::context::UnprotectedContext;
 use sesame::policy::{Reason, SimplePolicy};
-use sesame_rocket::policy::FrontendPolicy;
 use sesame_mysql::{schema_policy, SchemaPolicy};
-use mysql::Value;
-use rocket::http::Cookie;
-use rocket::Request;
+use sesame_rocket::policy::FrontendPolicy;
 
 #[derive(Clone)]
 #[schema_policy(table = "users", column = 1)]
@@ -20,12 +20,12 @@ impl SimplePolicy for QueryableOnly {
     fn simple_check(&self, _context: &UnprotectedContext, reason: Reason) -> bool {
         match reason {
             Reason::DB(query, _) => query.starts_with("SELECT"),
+            Reason::Cookie("apikey") => true,
             _ => false,
         }
     }
 
-
-    fn simple_join_direct(&mut self, other: &mut Self) {
+    fn simple_join_direct(&mut self, _other: &mut Self) {
         // QueryableOnly carries no state; nothing to combine.
     }
 }

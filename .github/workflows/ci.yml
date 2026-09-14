@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same branch supersedes an older, still running one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Incremental artifacts are large and useless across CI runs: they only bloat
+  # the cache.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-22.04
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The WASM sandbox is expensive to build (it fetches and compiles
+      # rlbox_wasm2c, and needs a second, older nightly plus wasi tooling), so
+      # the .so it produces is committed. Sesame's build script skips the whole
+      # thing when it finds the file, which is the only reason this workflow
+      # can be a plain `cargo test`. Fail early and clearly if it goes missing.
+      - name: Check the prebuilt sandbox is committed
+        run: |
+          so=websubmit_boxed_sandboxes/libwebsubmit_boxed_sandboxes_sandbox.so
+          if [ ! -f "$so" ]; then
+            echo "::error::$so is missing. It is committed on purpose: without"
+            echo "::error::it, sesame_build rebuilds the sandbox from scratch,"
+            echo "::error::which needs nightly-2023-10-06, rust-src and wasi."
+            exit 1
+          fi
+          ls -l "$so"
+
+      # The pinned nightly carries rustc-dev and rust-src, which are a slow
+      # several hundred megabytes to fetch.
+      - name: Cache the rust toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup/toolchains
+            ~/.rustup/update-hashes
+            ~/.rustup/settings.toml
+          key: rustup-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}
+
+      # Any cargo invocation inside the repo makes rustup install the toolchain
+      # that rust-toolchain.toml pins, with the components it names.
+      - name: Install the pinned toolchain
+        run: |
+          cargo --version --verbose
+          rustc --version --verbose
+
+      # Caches ~/.cargo/registry, ~/.cargo/git (the sesame checkouts) and
+      # target/. Pull requests restore main's cache but do not write their own.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Wait for MySQL
+        run: |
+          if ! command -v mysql > /dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq mysql-client
+          fi
+          for _ in $(seq 1 60); do
+            if mysql -h 127.0.0.1 -uroot -ppassword -e 'SELECT 1' > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          mysql -h 127.0.0.1 -uroot -ppassword -e 'SELECT VERSION()'
+          # Match the plugin development servers use, so CI exercises the same
+          # authentication path the pinned mysql crate takes locally.
+          mysql -h 127.0.0.1 -uroot -ppassword \
+            -e "ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
+
+      - name: Build
+        run: cargo test --workspace --locked --no-run
+
+      - name: Check the sandbox was linked, not rebuilt
+        run: git diff --exit-code -- websubmit_boxed_sandboxes
+
+      # .cargo/config.toml sets RUST_TEST_THREADS=1: the e2e tests share one
+      # database and must not run concurrently.
+      - name: Test
+        run: cargo test --workspace --locked

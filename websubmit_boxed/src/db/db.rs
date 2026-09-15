@@ -39,11 +39,13 @@ impl MySqlBackend {
         assert_eq!(db.ping(), true);
 
         if prime {
+            /*
             db.query_drop(format!("DROP DATABASE IF EXISTS {};", dbname))
                 .unwrap();
             db.query_drop(format!("CREATE DATABASE {};", dbname))
                 .unwrap();
             db.query_drop(format!("USE {};", dbname)).unwrap();
+            */
             // Statements may span several lines: accumulate until a line ends the
             // statement with a ';'.
             let mut cmd = String::from("");
@@ -55,12 +57,13 @@ impl MySqlBackend {
                 cmd += line;
                 cmd += " ";
                 if line.ends_with(";") {
+                    println!("{}", cmd);
                     db.query_drop(cmd).unwrap();
                     cmd = String::from("");
                 }
             }
         } else {
-            db.query_drop(format!("USE {};", dbname)).unwrap();
+            //db.query_drop(format!("USE {};", dbname)).unwrap();
         }
 
         Ok(MySqlBackend {

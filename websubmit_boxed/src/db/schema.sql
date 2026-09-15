@@ -65,26 +65,3 @@ UNION
 )
 ORDER BY id
 "';
-
--- Every (question, user) pair, with that user's answer when they have given one.
--- Questions are paired with users up front so that the LEFT JOIN keeps questions
--- a user has not answered; filtering `answers.email` in a WHERE clause instead
--- would drop questions that only *other* users have answered.
-CREATE VIEW questions_with_answers AS '"
-SELECT
-    questions.id AS id,
-    questions.lecture_id AS lecture_id,
-    questions.question_number AS question_number,
-    questions.question AS question,
-    users.email AS user_email,
-    answers.id AS answer_id,
-    answers.email AS answer_email,
-    answers.lec AS lec,
-    answers.question_id AS question_id,
-    answers.answer AS answer,
-    answers.submitted_at AS submitted_at
-FROM questions
-INNER JOIN users ON 1 = 1
-LEFT JOIN answers
-    ON (answers.question_id = questions.id AND answers.email = users.email)
-"';

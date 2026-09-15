@@ -14,10 +14,6 @@ use crate::policies::ContextData;
 #[schema_policy(table = "answers", column = 3)] // question_id
 #[schema_policy(table = "answers", column = 4)] // answer
 #[schema_policy(table = "answers", column = 5)] // submitted_at
-#[schema_policy(table = "questions_with_answers", column = 7)] // lec
-#[schema_policy(table = "questions_with_answers", column = 8)] // question_id
-#[schema_policy(table = "questions_with_answers", column = 9)] // answer
-#[schema_policy(table = "questions_with_answers", column = 10)] // submitted_at
 // We can add multiple #[schema_policy(...)] definitions
 // here to reuse the policy across tables/columns.
 #[derive(Clone)]
@@ -105,13 +101,6 @@ impl SchemaPolicy for AnswerAccessPolicy {
             "answers" => AnswerAccessPolicy::new(
                 mysql::from_value(row[1].clone()),
                 mysql::from_value(row[2].clone()),
-            ),
-            // The view pairs a question with a user, so the row belongs to that
-            // user and lecture even when the outer join produced no answer and
-            // the answer columns are all NULL.
-            "questions_with_answers" => AnswerAccessPolicy::new(
-                mysql::from_value(row[4].clone()),
-                mysql::from_value(row[1].clone()),
             ),
             table => panic!(
                 "AnswerAccessPolicy registered on unexpected table '{}'",

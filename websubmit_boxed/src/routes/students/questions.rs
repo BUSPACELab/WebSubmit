@@ -41,38 +41,50 @@ pub(crate) fn questions(
     let mut bg = backend.lock().unwrap();
     let key = num.clone().into_pcon::<u64, NoPolicy>();
 
-    // The view already left-joins this user's answers onto the lecture's
-    // questions, so unanswered questions come back with a NULL answer.
-    let rows = bg.query_questions_with_answers(
-        ("lecture_id", "user_email"),
+    // Unanswered questions have no policy-protected data to guard, so they are
+    // fetched separately from this user's own (policy-protected) answers and
+    // paired up in Rust, the same way `leclist` pairs lectures with counts.
+    let question_rows = bg.query_questions("lecture_id", (key.clone(),), context.clone());
+    let answer_rows = bg.query_answers(
+        ("lec", "email"),
         (key, apikey.user),
         context.clone(),
     );
     drop(bg);
 
-    let rows: Vec<_> = rows
+    let questions_meta: Vec<(u64, u64, String)> = question_rows
         .into_iter()
-        .map(|r| (r.id, r.question_number, r.question, r.answer))
+        .map(|q| {
+            (
+                q.id.discard_box(),
+                q.question_number.discard_box(),
+                q.question.discard_box(),
+            )
+        })
+        .collect();
+
+    let submissions: Vec<_> = answer_rows
+        .into_iter()
+        .map(|a| (a.question_id, a.answer))
         .collect();
 
     let questions: PCon<Vec<QuestionJoinAnswerRow>, AnyPolicy> =
         execute_verified::<dyn AnyPolicyDyn, _, _, _>(
-            rows,
-            VerifiedRegion::new(
-                |rows: Vec<(u64, u64, String, Option<String>)>| {
-                    let mut rows: Vec<QuestionJoinAnswerRow> = rows
-                        .into_iter()
-                        .map(|(id, question_num, prompt, answer)| QuestionJoinAnswerRow {
-                            id,
-                            question_num,
-                            prompt,
-                            answer,
-                        })
-                        .collect();
-                    rows.sort_by_key(|q| q.id);
-                    rows
-                },
-            ),
+            submissions,
+            VerifiedRegion::new(move |rows: Vec<(u64, String)>| {
+                let mut answered: HashMap<u64, String> = rows.into_iter().collect();
+                let mut rows: Vec<QuestionJoinAnswerRow> = questions_meta
+                    .iter()
+                    .map(|(id, question_num, prompt)| QuestionJoinAnswerRow {
+                        id: *id,
+                        question_num: *question_num,
+                        prompt: prompt.clone(),
+                        answer: answered.remove(id),
+                    })
+                    .collect();
+                rows.sort_by_key(|q| q.id);
+                rows
+            }),
         )
         .unwrap();
 

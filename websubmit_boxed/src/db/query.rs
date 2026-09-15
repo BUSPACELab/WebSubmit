@@ -5,7 +5,7 @@ use slog::warn;
 use crate::db::MySqlBackend;
 use crate::models::{
     AnswerModel, LectureModel, LectureWithQuestionCountsModel, PresenterModel, QuestionModel,
-    QuestionWithAnswerModel, UserModel,
+    UserModel,
 };
 use crate::policies::ContextData;
 
@@ -88,11 +88,6 @@ impl MySqlBackend {
     query_table!(query_answers, "answers", AnswerModel);
     query_table!(query_presenters, "presenters", PresenterModel);
 
-    query_table!(
-        query_questions_with_answers,
-        "questions_with_answers",
-        QuestionWithAnswerModel
-    );
     query_table!(
         query_lectures_with_question_counts,
         "lectures_with_question_counts",

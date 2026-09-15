@@ -11,9 +11,6 @@ use crate::policies::ContextData;
 #[schema_policy(table = "answers", column = 0)] // id: embeds the owner's email
 #[schema_policy(table = "answers", column = 1)] // email
 #[schema_policy(table = "presenters", column = 2)] // email
-#[schema_policy(table = "questions_with_answers", column = 4)] // user_email
-#[schema_policy(table = "questions_with_answers", column = 5)] // answer_id: embeds the email
-#[schema_policy(table = "questions_with_answers", column = 6)] // answer_email
 #[derive(Clone)]
 pub struct UserEmailPolicy {
     owner: Option<String>, // even if no owner, admins may access
@@ -69,9 +66,6 @@ impl SchemaPolicy for UserEmailPolicy {
             "users" => 0,
             "answers" => 1,
             "presenters" => 2,
-            // The view's row belongs to the paired user, whose email is always
-            // present, rather than to the (possibly NULL) answer email.
-            "questions_with_answers" => 4,
             table => panic!("UserEmailPolicy registered on unexpected table '{}'", table),
         };
         UserEmailPolicy {

@@ -3,7 +3,7 @@ class = "CSCI 2390"
 # TCP port the web server listens on (optional; defaults to 8000)
 port = 8000
 # database server address, as `host` or `host:port` (optional; defaults to 127.0.0.1)
-db_addr = "127.0.0.1"
+db_addr = "127.0.0.1:10001"
 # MySQL database name
 db_name = "myclass"
 # MySQL database user

@@ -1,8 +1,9 @@
-CREATE TABLE users (
+-- DATA SUBJECT TABLE.
+CREATE DATA_SUBJECT TABLE users (
     email varchar(255),
     apikey varchar(255),
-    is_admin tinyint,
-    consent tinyint,
+    is_admin int,
+    consent int,
     PRIMARY KEY (email),
     UNIQUE (apikey)
 );
@@ -35,7 +36,7 @@ CREATE TABLE answers (
     answer text,
     submitted_at datetime,
     PRIMARY KEY (id),
-    FOREIGN KEY (email) REFERENCES users(email),
+    FOREIGN KEY (email) OWNED_BY users(email),
     FOREIGN KEY (lec) REFERENCES lectures(id),
     FOREIGN KEY (question_id) REFERENCES questions(id)
 );
@@ -44,13 +45,12 @@ CREATE TABLE answers (
 CREATE TABLE presenters (
     id int AUTO_INCREMENT,
     lecture_id int,
-    email varchar(255),
+    email varchar(255) OWNED_BY users(email),
     PRIMARY KEY (id),
-    FOREIGN KEY (lecture_id) REFERENCES lectures(id),
-    FOREIGN KEY (email) REFERENCES users(email)
+    FOREIGN KEY (lecture_id) REFERENCES lectures(id)
 );
 
-CREATE VIEW lectures_with_question_counts AS
+CREATE VIEW lectures_with_question_counts AS '"
 (
     SELECT lectures.id AS id, lectures.label, 0 AS U_c
     FROM lectures LEFT JOIN questions ON (lectures.id = questions.lecture_id)
@@ -63,13 +63,14 @@ UNION
     FROM lectures JOIN questions ON (lectures.id = questions.lecture_id)
     GROUP BY lectures.id, lectures.label
 )
-ORDER BY id;
+ORDER BY id
+"';
 
 -- Every (question, user) pair, with that user's answer when they have given one.
 -- Questions are paired with users up front so that the LEFT JOIN keeps questions
 -- a user has not answered; filtering `answers.email` in a WHERE clause instead
 -- would drop questions that only *other* users have answered.
-CREATE VIEW questions_with_answers AS
+CREATE VIEW questions_with_answers AS '"
 SELECT
     questions.id AS id,
     questions.lecture_id AS lecture_id,
@@ -85,4 +86,5 @@ SELECT
 FROM questions
 CROSS JOIN users
 LEFT JOIN answers
-    ON (answers.question_id = questions.id AND answers.email = users.email);
+    ON (answers.question_id = questions.id AND answers.email = users.email)
+"';

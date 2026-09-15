@@ -84,7 +84,7 @@ SELECT
     answers.answer AS answer,
     answers.submitted_at AS submitted_at
 FROM questions
-CROSS JOIN users
+INNER JOIN users ON 1 = 1
 LEFT JOIN answers
     ON (answers.question_id = questions.id AND answers.email = users.email)
 "';

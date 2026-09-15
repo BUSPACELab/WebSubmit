@@ -3,11 +3,11 @@
 
     <form action="/admin/lec/add" method="post" accept-charset="utf-8">
       <p>
-        <label>Lecture ID: <input name="lec_id" />
+        <label>Lecture ID: <input name="lec_id" type="number" min="0" step="1" required />
         </label>
       </p>
       <p>
-        <label>Lecture label: <input name="lec_label" />
+        <label>Lecture label: <input name="lec_label" required />
         </label>
       </p>
 

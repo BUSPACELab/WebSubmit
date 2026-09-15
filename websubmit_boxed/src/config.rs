@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fs;
 use std::io::{Error, ErrorKind, Read};
 
@@ -7,6 +8,8 @@ use toml;
 pub struct Config {
     /// Textual identifier for class
     pub class: String,
+    /// TCP port the web server listens on
+    pub port: u16,
     /// Database name
     pub db_name: String,
     /// Database user
@@ -57,6 +60,15 @@ impl Config {
 
         Ok(Config {
             class: value.get("class").unwrap().as_str().unwrap().into(),
+            // Optional, so that configs written before this key existed keep
+            // working; 8000 is Rocket's own default.
+            port: match value.get("port") {
+                None => 8000,
+                Some(v) => {
+                    let port = v.as_integer().expect("port must be an integer");
+                    u16::try_from(port).expect("port must be between 0 and 65535")
+                }
+            },
             db_name: value.get("db_name").unwrap().as_str().unwrap().into(),
             db_user: value.get("db_user").unwrap().as_str().unwrap().into(),
             db_password: value.get("db_password").unwrap().as_str().unwrap().into(),

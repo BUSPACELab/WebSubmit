@@ -1,5 +1,7 @@
 # short class ID (human readable)
 class = "CSCI 2390"
+# TCP port the web server listens on (optional; defaults to 8000)
+port = 8000
 # MySQL database name
 db_name = "myclass"
 # MySQL database user

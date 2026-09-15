@@ -21,9 +21,10 @@ WebSubmit$ cargo run --release -p websubmit_boxed
 To create and initialize the database, set the `prime` variable in the configuration
 file (see below).
 
-The web interface will be served on `localhost:8000`. Note that the
-templates included in this repository are very basic; in practice, you
-will want to customize the files in `websubmit_boxed/templates`.
+The web interface will be served on `localhost:8000`, or on the `port` set in
+the configuration file. Note that the templates included in this repository are
+very basic; in practice, you will want to customize the files in
+`websubmit_boxed/templates`.
 
 By default, the application will read configuration file `sample-config.toml`,
 but a real deployment will specify a custom config (`-c myconfig.toml`).
@@ -31,6 +32,8 @@ Configuration files are TOML files with the following format:
 ```
 # short class ID (human readable)
 class = "CSCI 2390"
+# TCP port the web server listens on (optional; defaults to 8000)
+port = 8000
 # MySQL database name
 db_name = "myclass"
 # list of staff email addresses (these users' API keys get admin access)

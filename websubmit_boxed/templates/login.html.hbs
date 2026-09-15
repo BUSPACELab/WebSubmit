@@ -1,16 +1,16 @@
 {{#*inline "page"}}
-    <h1>Welcome to the {{{ CLASS_ID }}} submission system!</h1>
+    <h1>Welcome to the {{ CLASS_ID }} submission system!</h1>
 
     <h5>Generate API key:</h5>
     <form action="/apikey/generate" method="post" accept-charset="utf-8">
         <p>
             <label>Your email address:
-                <input name="email"/>
+                <input name="email" type="email" autocomplete="email" required />
             </label>
         </p>
         <p>
             <label>Do you consent:
-                <input name="consent" type="checkbox"/>
+                <input name="consent" type="checkbox" required />
             </label>
         </p>
         <input type="submit" value="Submit">
@@ -20,7 +20,7 @@
     <form action="/apikey/check" method="post" accept-charset="utf-8">
         <label>Your API key:
             <p>
-                <input name="key"/>
+                <input name="key" autocomplete="off" required />
             </p>
         </label>
         <input type="submit" value="Submit">

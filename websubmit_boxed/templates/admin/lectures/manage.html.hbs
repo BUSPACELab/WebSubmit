@@ -1,13 +1,13 @@
 {{#*inline "page"}}
-    <h1>Lecture {{{ lec_id }}} admin</h1>
+    <h1>Lecture {{ lec_id }} admin</h1>
 
-    <form action="/admin/lec/edit/{{{ lec_id }}}" method="post" accept-charset="utf-8">
+    <form action="/admin/lec/edit/{{ lec_id }}" method="post" accept-charset="utf-8">
       <p>
-        <label>Title: <input name="lec_name" value="{{{ title }}}" />
+        <label>Title: <input name="lec_name" value="{{ title }}" required />
         </label>
       </p>
       <p>
-        <label>Presenters (CSV list of emails): <input name="lec_presenters" value="{{{ presenters }}}" />
+        <label>Presenters (CSV list of emails): <input name="lec_presenters" value="{{ presenters }}" />
         </label>
       </p>
 
@@ -17,15 +17,15 @@
     <h2>Current questions</h2>
     <ul>
       {{#each questions}}
-      <li>{{{ this.question_number }}}: {{{ this.question }}} &ndash; <a href="/admin/lec/{{{ ../lec_id }}}/{{{ this.id }}}">edit</a></li>
+      <li>{{ this.question_number }}: {{{ this.question }}} &ndash; <a href="/admin/lec/{{ ../lec_id }}/{{ this.id }}">edit</a></li>
       {{/each}}
     </ul>
 
     <h2>Add question</h2>
-    <form action="/admin/lec/{{{ lec_id }}}" method="post" accept-charset="utf-8">
+    <form action="/admin/lec/{{ lec_id }}" method="post" accept-charset="utf-8">
       <p>
         <label>Question prompt:<br />
-        <textarea name="q_prompt" rows="10" cols="80">Ask something here.</textarea>
+        <textarea name="q_prompt" rows="10" cols="80" placeholder="Ask something here." required></textarea>
         </label>
       </p>
 

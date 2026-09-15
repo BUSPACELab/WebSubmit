@@ -1,19 +1,23 @@
 {{#*inline "page"}}
-    <h1>Lecture {{{ lec_id }}} answers:</h1>
+    <h1>Lecture {{ lec_id }} answers:</h1>
 
     <table>
-      <tr>
-        <th>ID</th>
-        <th>Answer</th>
-        <th>Submission time</th>
-      </tr>
-      {{#each answers}}
-      <tr>
-        <td>{{{ this.question_id }}}</td>
-        <td>{{{ this.answer }}}</td>
-        <td>{{{ this.submitted_at }}}</td>
-      </tr>
-      {{/each}}
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Answer</th>
+          <th scope="col">Submission time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each answers}}
+        <tr>
+          <td>{{ this.question_id }}</td>
+          <td>{{ this.answer }}</td>
+          <td>{{ this.submitted_at }}</td>
+        </tr>
+        {{/each}}
+      </tbody>
     </table>
 {{/inline}}
 {{~> layout~}}

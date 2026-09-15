@@ -2,30 +2,34 @@
     <h1>Grading report</h1>
 
     <table>
-      <tr>
-        <th>Email</th>
-        <th>Total (/{{{ lectures_count }}})</th>
-        {{#each lectures}}
-        <th>{{{ this.label }}} (/{{{ this.num_qs }}})</th>
+      <thead>
+        <tr>
+          <th scope="col">Email</th>
+          <th scope="col">Total (/{{ lectures_count }})</th>
+          {{#each lectures}}
+          <th scope="col">{{ this.label }} (/{{ this.num_qs }})</th>
+          {{/each}}
+        </tr>
+      </thead>
+      <tbody>
+        {{#each users}}
+        <tr>
+          <td>{{ this.email }}</td>
+          <td>{{ this.total }}</td>
+          {{#each this.lectures}}
+          <td>{{ this }}</td>
+          {{/each}}
+        </tr>
         {{/each}}
-      </tr>
-      {{#each users}}
-      <tr>
-        <td>{{{ this.email }}}</td>
-        <td>{{{ this.total }}}</td>
-        {{#each this.lectures}}
-        <td>{{{ this }}}</td>
-        {{/each}}
-      </tr>
-      {{/each}}
+      </tbody>
     </table>
 
     <hr>
     <br><br><br>
     <h3>CSV</h3>
     <pre>
-Email,"Total (/{{{ lectures_count }}})"{{#each lectures}},"{{{ this.label }}} (/{{{ this.num_qs }}})"{{/each}}
-{{#each users}}"{{{ this.email }}}",{{{ this.total }}}{{#each this.lectures}},{{{ this }}}{{/each}}
+Email,"Total (/{{ lectures_count }})"{{#each lectures}},{{csv this.label " (/" this.num_qs ")"}}{{/each}}
+{{#each users}}{{csv this.email}},{{ this.total }}{{#each this.lectures}},{{ this }}{{/each}}
 {{/each}}
     </pre>
 {{/inline}}

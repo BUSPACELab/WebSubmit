@@ -1,11 +1,11 @@
 {{#*inline "page"}}
-  <p>Your API key has been emailed to <b>{{{ apikey_email }}}</b>.</p>
+  <p>Your API key has been emailed to <b>{{ apikey_email }}</b>.</p>
 
   <p>Once you've received the API key, paste it below to log in.</p>
   <form action="/apikey/check" method="post" accept-charset="utf-8">
     <label>API key:
       <p>
-      <input name="key" />
+      <input name="key" autocomplete="off" required />
       </p>
     </label>
     <input type="submit" value="Submit">

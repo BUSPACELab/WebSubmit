@@ -2,30 +2,34 @@
     <h1>Registered users:</h1>
 
     <table>
-        <tr>
-            <th>Email</th>
-            <th>Admin?</th>
-            <th>Consent?</th>
-        </tr>
-        {{#each users}}
+        <thead>
             <tr>
-                <td>{{{ this.email }}}</td>
-                <td>
-                    {{#if this.is_admin}}
-                        yes
-                    {{else}}
-                        no
-                    {{/if}}
-                </td>
-                <td>
-                    {{#if this.consent}}
-                        yes
-                    {{else}}
-                        no
-                    {{/if}}
-                </td>
+                <th scope="col">Email</th>
+                <th scope="col">Admin?</th>
+                <th scope="col">Consent?</th>
             </tr>
-        {{/each}}
+        </thead>
+        <tbody>
+            {{#each users}}
+                <tr>
+                    <td>{{ this.email }}</td>
+                    <td>
+                        {{#if this.is_admin}}
+                            yes
+                        {{else}}
+                            no
+                        {{/if}}
+                    </td>
+                    <td>
+                        {{#if this.consent}}
+                            yes
+                        {{else}}
+                            no
+                        {{/if}}
+                    </td>
+                </tr>
+            {{/each}}
+        </tbody>
     </table>
 {{/inline}}
 {{~> layout~}}

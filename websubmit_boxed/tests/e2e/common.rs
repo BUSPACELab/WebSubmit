@@ -64,6 +64,9 @@ fn config(prime: bool) -> Config {
 
     Config {
         class: String::from(CLASS),
+        // Unused: the tests drive the app through a local client, which never
+        // binds a listener.
+        port: 8000,
         db_name: String::from(DB_NAME),
         db_user: db_user(),
         db_password: db_password(),

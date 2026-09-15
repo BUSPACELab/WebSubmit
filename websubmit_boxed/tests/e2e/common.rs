@@ -50,6 +50,12 @@ fn db_password() -> String {
     std::env::var("WEBSUBMIT_TEST_DB_PASSWORD").unwrap_or_else(|_| String::from("password"))
 }
 
+/// Where the test database lives. Overridable so that CI can point the suite at
+/// a server on another host or port without touching the fixture.
+fn db_addr() -> String {
+    std::env::var("WEBSUBMIT_TEST_DB_ADDR").unwrap_or_else(|_| String::from("127.0.0.1"))
+}
+
 fn config(prime: bool) -> Config {
     // One rocket is launched per client, so keep their banners out of the test
     // output unless the runner asks for them.
@@ -67,6 +73,7 @@ fn config(prime: bool) -> Config {
         // Unused: the tests drive the app through a local client, which never
         // binds a listener.
         port: 8000,
+        db_addr: db_addr(),
         db_name: String::from(DB_NAME),
         db_user: db_user(),
         db_password: db_password(),
@@ -96,9 +103,10 @@ pub fn db() -> mysql::Conn {
 fn raw_db() -> mysql::Conn {
     mysql::Conn::new(
         mysql::Opts::from_url(&format!(
-            "mysql://{}:{}@127.0.0.1/{}",
+            "mysql://{}:{}@{}/{}",
             db_user(),
             db_password(),
+            db_addr(),
             DB_NAME
         ))
         .unwrap(),

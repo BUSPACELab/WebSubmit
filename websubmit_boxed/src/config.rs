@@ -10,6 +10,8 @@ pub struct Config {
     pub class: String,
     /// TCP port the web server listens on
     pub port: u16,
+    /// Database server address, as `host` or `host:port`
+    pub db_addr: String,
     /// Database name
     pub db_name: String,
     /// Database user
@@ -68,6 +70,12 @@ impl Config {
                     let port = v.as_integer().expect("port must be an integer");
                     u16::try_from(port).expect("port must be between 0 and 65535")
                 }
+            },
+            // Optional, so that configs written before this key existed keep
+            // working. A port may be included (e.g. "127.0.0.1:10001").
+            db_addr: match value.get("db_addr") {
+                None => String::from("127.0.0.1"),
+                Some(v) => v.as_str().expect("db_addr must be a string").into(),
             },
             db_name: value.get("db_name").unwrap().as_str().unwrap().into(),
             db_user: value.get("db_user").unwrap().as_str().unwrap().into(),

@@ -12,6 +12,7 @@ pub struct MySqlBackend {
     pub(super) prep_stmts: HashMap<String, PConStatement>,
     pub(super) db_user: String,
     pub(super) db_password: String,
+    pub(super) db_addr: String,
     pub(super) db_name: String,
 }
 
@@ -19,6 +20,7 @@ impl MySqlBackend {
     pub fn new(
         user: &str,
         password: &str,
+        addr: &str,
         dbname: &str,
         log: Option<slog::Logger>,
         prime: bool,
@@ -33,7 +35,7 @@ impl MySqlBackend {
             "Connecting to MySql DB and initializing schema {}...", dbname
         );
         let mut db = SesameConn::new(
-            PConOpts::from_url(&format!("mysql://{}:{}@127.0.0.1/", user, password)).unwrap(),
+            PConOpts::from_url(&format!("mysql://{}:{}@{}/", user, password, addr)).unwrap(),
         )
         .unwrap();
         assert_eq!(db.ping(), true);
@@ -73,6 +75,7 @@ impl MySqlBackend {
             prep_stmts: HashMap::new(),
             db_user: String::from(user),
             db_password: String::from(password),
+            db_addr: String::from(addr),
             db_name: String::from(dbname),
         })
     }
@@ -87,8 +90,8 @@ impl MySqlBackend {
 
         self.handle = SesameConn::new(
             PConOpts::from_url(&format!(
-                "mysql://{}:{}@127.0.0.1/{}",
-                self.db_user, self.db_password, self.db_name
+                "mysql://{}:{}@{}/{}",
+                self.db_user, self.db_password, self.db_addr, self.db_name
             ))
             .unwrap(),
         )

@@ -34,6 +34,8 @@ Configuration files are TOML files with the following format:
 class = "CSCI 2390"
 # TCP port the web server listens on (optional; defaults to 8000)
 port = 8000
+# database server address, as `host` or `host:port` (optional; defaults to 127.0.0.1)
+db_addr = "127.0.0.1"
 # MySQL database name
 db_name = "myclass"
 # list of staff email addresses (these users' API keys get admin access)

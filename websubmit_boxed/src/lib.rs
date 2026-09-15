@@ -48,6 +48,7 @@ pub fn make_rocket(config: Config) -> SesameRocket<Build> {
         db::MySqlBackend::new(
             &config.db_user,
             &config.db_password,
+            &config.db_addr,
             &config.db_name,
             Some(new_logger()),
             config.prime,

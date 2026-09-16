@@ -219,6 +219,13 @@ CREATE TABLE presenters (
         but refuses every other use, including ever displaying it on a page.
       </li>
       <li>
+        <strong>AutomatedAnalysisPolicy</strong> &mdash; applied to the
+        <code>answer</code> column. Allows the instructor's automated
+        analytics &mdash; including any third-party language models &mdash;
+        to analyze answers only from users who consented, and only for that
+        specific automated-analysis use &mdash; never for any other purpose.
+      </li>
+      <li>
         Every other column (the lecture and question text and so on) carries no
         policies, since it is not personal data and we allow it to be accessed
         by anyone.
@@ -243,6 +250,13 @@ fn check(who_is_asking) -&gt; bool {
         return true                                         // you present this lecture
     }
     false
+}
+
+// AutomatedAnalysisPolicy, on consented_answers.answer
+fn check(who_is_asking, purpose) -&gt; bool {
+    if !self.consent { return false }                  // you did not consent
+    if purpose != AutomatedAnalysisRequest { return false } // only for that specific use
+    who_is_asking.is_admin()                           // only the instructor can trigger it
 }</code></pre>
   <p>
     These are simplified for readability; see

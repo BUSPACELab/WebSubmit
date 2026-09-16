@@ -60,6 +60,17 @@ fn the_lecture_admin_page_is_closed_to_students() {
 fn editing_a_lecture_sets_its_title_and_replaces_its_presenters() {
     let admin = client(ADMIN);
     post(&admin, "/admin/lec/add", "lec_id=92&lec_label=Before+edit");
+    post(&admin, "/admin/lec/92", "q_prompt=Lecture+92+question");
+
+    // Alex (neither Sarah nor Allen) answers, so lecture 92 has real content:
+    // an empty lecture has nothing for Sesame's AnswerAccessPolicy to refuse,
+    // so the presenter check below would trivially (and wrongly) pass.
+    let alex = client(ALEX);
+    post(
+        &alex,
+        "/questions/92",
+        answers_body(&question_ids(92), "Alex's answer for lecture 92"),
+    );
 
     let response = post(
         &admin,

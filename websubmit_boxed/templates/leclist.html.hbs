@@ -5,12 +5,30 @@
   {{#each lectures}}
     <li>
       <a href="/questions/{{ this.id }}">{{ this.label }}</a> ({{ this.num_answered }}/{{ this.num_qs }})
+      {{#if this.is_presenter}}
+      &ndash; <small><a href="/answers/presenters/{{ this.id }}">presenter view</a></small>
+      {{/if}}
       {{#if ../admin}}
       &ndash; <small><a href="/answers/{{ this.id }}">answers</a> <a href="/admin/lec/{{ this.id }}">admin</a></small>
       {{/if}}
     </li>
   {{/each}}
   </ol>
+
+  <hr />
+  Subject Access Requests:
+  <ul>
+    <li>
+      <a href="/access">Access my data</a>
+    </li>
+    <li>
+      <a href="#" style="text-decoration: line-through; color: gray; pointer-events: none;" aria-disabled="true" tabindex="-1">Delete my data</a>
+      &ndash; retaining your data is required for grading, and it must be
+      kept for up to one year after final grades are submitted, in
+      accordance with university policy. See our
+      <a href="/privacy">privacy policy</a> for details.
+    </li>
+  </ul>
 
   {{#if ../admin}}
   <hr />

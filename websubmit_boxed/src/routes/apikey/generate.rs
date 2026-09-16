@@ -60,14 +60,6 @@ pub(crate) fn generate(
         context.clone(),
     );
 
-    println!(
-        "API key: {}",
-        hash.clone()
-            .specialize_policy::<NoPolicy>()
-            .unwrap()
-            .discard_box()
-    );
-
     if config.send_emails {
         execute_critical(
             (data.email.clone(), hash.clone()),
@@ -92,6 +84,14 @@ pub(crate) fn generate(
             (),
         )
         .unwrap();
+    } else {
+        println!(
+            "API key: {}",
+            hash.clone()
+                .specialize_policy::<NoPolicy>()
+                .unwrap()
+                .discard_box()
+        );
     }
     drop(bg);
 

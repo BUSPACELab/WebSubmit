@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use rocket::State;
@@ -36,7 +36,15 @@ pub(crate) fn leclist(
         (apikey.user.clone(),),
         context.clone(),
     );
+    // The lectures the viewer presents, so the template can offer a
+    // presenter-view link only for those.
+    let presented_res = bg.query_presenters("email", (apikey.user.clone(),), context.clone());
     drop(bg);
+
+    let presented_lectures: HashSet<u64> = presented_res
+        .into_iter()
+        .map(|p| p.lecture_id.discard_box())
+        .collect();
 
     let admin: PCon<bool, UserEmailPolicy> = apikey.user.into_verified(
         VerifiedRegion::new(|email| {
@@ -77,6 +85,7 @@ pub(crate) fn leclist(
                         label: label.clone(),
                         num_qs: *num_qs,
                         num_answered: *answered.get(id).unwrap_or(&0),
+                        is_presenter: presented_lectures.contains(id),
                     })
                     .collect::<Vec<AggregateLectureRow>>()
             }),
@@ -94,4 +103,5 @@ pub(crate) struct AggregateLectureRow {
     pub label: String,
     pub num_qs: u64,
     pub num_answered: u64,
+    pub is_presenter: bool,
 }

@@ -18,6 +18,7 @@ rand = "0.8.4"
 rocket = { git = "https://github.com/KinanBab/Rocket.git", branch = "main" }
 slog = { version = "2.4.0", features = ["max_level_trace", "release_max_level_trace"] }
 slog-term = "2.4.0"
+time = { version = "0.2.11", default-features = false, features = ["std"] }
 toml = "0.2.1"
 serde = "1.0"
 serde_derive = "1.0"

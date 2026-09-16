@@ -14,6 +14,13 @@ fn login_page_renders_the_class_name() {
 }
 
 #[test]
+fn privacy_policy_page_is_reachable_without_logging_in() {
+    let client = anonymous();
+    let body = ok_body(client.get("/privacy").dispatch());
+    assert!(body.contains("Privacy Policy"));
+}
+
+#[test]
 fn index_sends_an_anonymous_visitor_to_login() {
     let client = anonymous();
     let response = client.get("/").dispatch();
@@ -138,10 +145,48 @@ fn an_unknown_key_does_not_log_anyone_in() {
 }
 
 #[test]
-fn pages_behind_the_api_key_reject_anonymous_visitors() {
+fn logging_out_clears_the_session() {
+    let client = client(ALEX);
+    assert_eq!(client.get("/leclist").dispatch().status(), Status::Ok);
+
+    let response = client.get("/apikey/logout").dispatch();
+    assert_eq!(response.status(), Status::SeeOther);
+    assert_eq!(response.headers().get_one("Location"), Some("/login"));
+
+    // The same client, now logged out, no longer reaches a protected page.
+    assert_ne!(client.get("/leclist").dispatch().status(), Status::Ok);
+}
+
+#[test]
+fn logging_out_without_a_session_is_harmless() {
+    let client = anonymous();
+    let response = client.get("/apikey/logout").dispatch();
+    assert_eq!(response.status(), Status::SeeOther);
+    assert_eq!(response.headers().get_one("Location"), Some("/login"));
+}
+
+#[test]
+fn anonymous_visitors_to_apikey_guarded_pages_are_sent_to_login() {
     let client = anonymous();
     for uri in ["/leclist", "/questions/1", "/answers/presenters/1"] {
         let response = client.get(uri).dispatch();
-        assert_ne!(response.status(), Status::Ok, "{} was reachable", uri);
+        assert_eq!(response.status(), Status::SeeOther, "{} was reachable", uri);
+        assert_eq!(
+            response.headers().get_one("Location"),
+            Some("/login"),
+            "{} did not redirect to /login",
+            uri
+        );
+    }
+}
+
+#[test]
+fn anonymous_visitors_to_admin_pages_still_get_401() {
+    // The Admin guard's own failure (not logged in, or logged in but not an
+    // admin) stays a plain 401: only the ApiKey guard's failure redirects.
+    let client = anonymous();
+    for uri in ["/admin/users", "/admin/grading", "/admin/lec/add"] {
+        let response = client.get(uri).dispatch();
+        assert_eq!(response.status(), Status::Unauthorized, "{} status", uri);
     }
 }

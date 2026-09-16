@@ -22,6 +22,23 @@ fn the_lecture_list_shows_every_lecture_and_its_question_count() {
 }
 
 #[test]
+fn presenters_see_a_presenter_view_link_only_for_their_own_lecture() {
+    // Corinn presents lecture 1 only (seeded in common::seed()).
+    let client = client(CORINN);
+    let body = ok_body(client.get("/leclist").dispatch());
+    assert!(body.contains("href=\"/answers/presenters/1\""));
+    assert!(!body.contains("href=\"/answers/presenters/2\""));
+    assert!(!body.contains("href=\"/answers/presenters/3\""));
+}
+
+#[test]
+fn non_presenters_see_no_presenter_view_link() {
+    let client = client(ALEX);
+    let body = ok_body(client.get("/leclist").dispatch());
+    assert!(!body.contains("presenter view"));
+}
+
+#[test]
 fn students_do_not_see_the_admin_links() {
     let client = client(ALLEN);
     let body = ok_body(client.get("/leclist").dispatch());

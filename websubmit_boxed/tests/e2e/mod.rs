@@ -1,3 +1,4 @@
+mod access;
 mod admin;
 mod auth;
 mod common;

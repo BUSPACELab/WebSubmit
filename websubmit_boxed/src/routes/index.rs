@@ -32,3 +32,12 @@ pub(crate) fn login(config: &State<Config>, context: Context<ContextData>) -> PC
     ctx.insert("CLASS_ID", config.class.clone());
     PConTemplate::render("login", &ctx, context).unwrap()
 }
+
+// Public: readable before registering, since it is what a visitor is meant to
+// read before deciding whether to consent.
+#[get("/")]
+pub(crate) fn privacy(config: &State<Config>, context: Context<ContextData>) -> PConTemplate {
+    let mut ctx = HashMap::new();
+    ctx.insert("CLASS_ID", config.class.clone());
+    PConTemplate::render("privacy", &ctx, context).unwrap()
+}

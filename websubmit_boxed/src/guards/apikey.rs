@@ -19,6 +19,11 @@ pub(crate) enum ApiKeyError {
     Missing,
 }
 
+// Distinct from Status::Unauthorized (401, used by the Admin guard) so a
+// catcher can redirect a plain "not logged in" visitor to /login while
+// leaving Admin's 401 (logged in, but not an admin) alone.
+pub(crate) const NOT_LOGGED_IN: Status = Status::new(419);
+
 #[derive(SesameType, Clone)]
 pub(crate) struct ApiKey {
     pub user: PCon<String, UserEmailPolicy>,
@@ -67,6 +72,6 @@ impl<'a, 'r> FromPConRequest<'a, 'r> for ApiKey {
                     Err(_) => None,
                 },
             )
-            .into_outcome((Status::Unauthorized, ApiKeyError::Missing))
+            .into_outcome((NOT_LOGGED_IN, ApiKeyError::Missing))
     }
 }

@@ -1,14 +1,20 @@
 use std::sync::{Arc, Mutex};
 
+use rocket::http::SameSite;
 use rocket::State;
 use sesame::context::Context;
 use sesame::pcon::PCon;
 
 use sesame_rocket::rocket::{post, FromPConForm, PConCookie, PConCookieJar, PConForm, PConRedirect};
+use time::Duration;
 
 use crate::db::MySqlBackend;
 use crate::guards::apikey::{check_api_key, ApiKeyError};
 use crate::policies::{ContextData, QueryableOnly};
+
+// A semester's worth of sessions, so a student logs in once and stays signed
+// in for the course rather than every browser restart.
+const SESSION_LIFETIME_DAYS: i64 = 120;
 
 #[derive(FromPConForm)]
 pub(crate) struct ApiKeyCheckForm {
@@ -36,8 +42,13 @@ pub(crate) fn check(
         Ok(_) => (),
     }
 
+    // Lax (rather than Rocket's own Strict default) so a direct link from
+    // email or the course's LMS -- a normal top-level navigation onto this
+    // site -- still carries the cookie; cross-site POSTs stay blocked.
     let cookie = PConCookie::build("apikey", data.into_inner().key)
         .path("/")
+        .max_age(Duration::days(SESSION_LIFETIME_DAYS))
+        .same_site(SameSite::Lax)
         .finish();
     cookies.add(cookie, context).unwrap();
     PConRedirect::to2("/leclist")

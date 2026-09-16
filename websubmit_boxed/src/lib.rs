@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 use handlebars::{Context as HbContext, Handlebars, Helper, HelperResult, Output, RenderContext};
 use rocket::Build;
 use rocket::fs::FileServer;
+use rocket::response::Redirect;
+use rocket::catchers;
 use rocket_dyn_templates::Template;
 use sesame_rocket::rocket::{routes, SesameRocket, SesameRoute};
 use slog::o;
@@ -54,6 +56,14 @@ fn csv(
     Ok(())
 }
 
+// The ApiKey guard fails with this status (rather than the Admin guard's
+// plain 401) specifically so this catcher, and only this catcher, can send a
+// visitor who simply isn't logged in to the login page.
+#[rocket::catch(419)]
+fn login_required() -> Redirect {
+    Redirect::to("/login")
+}
+
 
 pub fn make_rocket(config: Config) -> SesameRocket<Build> {
     let backend = Arc::new(Mutex::new(
@@ -95,6 +105,7 @@ pub fn make_rocket(config: Config) -> SesameRocket<Build> {
         .attach(template)
         .manage(backend)
         .manage(config)
+        .register("/", catchers![login_required])
         .mount(
             "/css",
             SesameRoute::from(FileServer::from(format!("{}/css", resource_dir))),
@@ -105,8 +116,10 @@ pub fn make_rocket(config: Config) -> SesameRocket<Build> {
         )
         .mount("/", routes![routes::index::index])
         .mount("/login", routes![routes::index::login])
+        .mount("/privacy", routes![routes::index::privacy])
         .mount("/apikey/generate", routes![routes::apikey::generate::generate])
         .mount("/apikey/check", routes![routes::apikey::check::check])
+        .mount("/apikey/logout", routes![routes::apikey::logout::logout])
         .mount("/leclist", routes![routes::leclist::leclist])
         .mount(
             "/questions",

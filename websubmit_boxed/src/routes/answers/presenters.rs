@@ -31,15 +31,6 @@ pub(crate) fn answers_for_presenters(
 ) -> PConTemplate {
     let key = num.clone().into_pcon::<u64, NoPolicy>();
 
-    let is_discussion_leader = {let mut bg = backend.lock().unwrap();
-        let vec = bg.query_presenters(
-            ("lecture_id", "email"), (key.clone(), apikey.user), context.clone(), );
-        vec.len() > 0};
-
-    if !is_discussion_leader {
-        panic!()
-    }
-
     let mut bg = backend.lock().unwrap();
     let res = bg.query_answers(
         "lec",

@@ -25,17 +25,58 @@ fn a_presenter_sees_the_answers_without_the_authors() {
 
 #[test]
 fn a_presenter_of_one_lecture_may_not_read_another() {
-    // Artem presents lecture 2 only.
+    // Artem presents lecture 2 only. This test owns a scratch lecture of its
+    // own (rather than reusing 1/2/3) so its answer doesn't collide with
+    // what other tests assume about those. Sarah's answer gives it real
+    // content: an empty lecture has no policy-protected data for Sesame to
+    // refuse Artem, so the check would trivially (and wrongly) pass.
+    let admin = client(ADMIN);
+    post(&admin, "/admin/lec/add", "lec_id=97&lec_label=Someone+elses+lecture");
+    post(&admin, "/admin/lec/97", "q_prompt=Scratch+question");
+
+    let sarah = client(SARAH);
+    post(
+        &sarah,
+        "/questions/97",
+        answers_body(&question_ids(97), "Sarah's answer for lecture 97"),
+    );
+
     let artem = client(ARTEM);
-    let response = artem.get("/answers/presenters/1").dispatch();
+    let response = artem.get("/answers/presenters/97").dispatch();
     assert_ne!(response.status(), Status::Ok);
 }
 
 #[test]
 fn a_student_who_presents_nothing_is_refused() {
+    // Two scratch lectures of this test's own: 98 has a presenter (Corinn,
+    // not Allen), 99 has none at all. Sarah answers both so there is real
+    // content behind the refusal (see a_presenter_of_one_lecture_may_not_
+    // read_another for why an empty lecture wouldn't test anything).
+    let admin = client(ADMIN);
+    post(&admin, "/admin/lec/add", "lec_id=98&lec_label=Someone+elses+lecture");
+    post(&admin, "/admin/lec/98", "q_prompt=Scratch+question");
+    post(
+        &admin,
+        "/admin/lec/edit/98",
+        format!("lec_name=Someone+elses+lecture&lec_presenters={}", urlencode(CORINN)),
+    );
+    post(&admin, "/admin/lec/add", "lec_id=99&lec_label=Unpresented+lecture");
+    post(&admin, "/admin/lec/99", "q_prompt=Scratch+question");
+
+    let sarah = client(SARAH);
+    post(
+        &sarah,
+        "/questions/98",
+        answers_body(&question_ids(98), "Sarah's answer for lecture 98"),
+    );
+    post(
+        &sarah,
+        "/questions/99",
+        answers_body(&question_ids(99), "Sarah's answer for lecture 99"),
+    );
+
     let allen = client(ALLEN);
-    // Lecture 3 has no presenter at all, and lecture 1 has someone else's.
-    for lecture in [1, 3] {
+    for lecture in [98, 99] {
         let response = allen
             .get(format!("/answers/presenters/{}", lecture))
             .dispatch();

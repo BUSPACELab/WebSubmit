@@ -104,6 +104,7 @@ jobs:
             fi
             sleep 1
           done
+          docker logs ${{ job.services.k9db.id }}
           docker logs ${{ job.services.k9db.id }} 2>&1 | grep "Listening at"
 
       - name: Build

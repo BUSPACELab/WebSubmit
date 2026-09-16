@@ -122,7 +122,12 @@ fn raw_apikey(email: &str) -> String {
 
 /// The question ids of a lecture, in the order they were added.
 pub fn question_ids(lecture: u64) -> Vec<u64> {
-    let rows: Vec<(u64, u64, u64)> = db()
+    seed();
+    raw_question_ids(lecture)
+}
+
+fn raw_question_ids(lecture: u64) -> Vec<u64> {
+    let rows: Vec<(u64, u64, u64)> = raw_db()
         .exec(
             "SELECT id, lecture_id, question_number FROM questions WHERE lecture_id = ? \
              ORDER BY question_number",
@@ -249,5 +254,14 @@ pub fn seed() {
                 ),
             );
         }
+
+        // Artem, lecture 2's presenter, has also answered its questions
+        // himself, so tests have a presenter-authored answer to work with.
+        login(&client, &raw_apikey(ARTEM));
+        post(
+            &client,
+            "/questions/2",
+            answers_body(&raw_question_ids(2), "Artem's seeded answer"),
+        );
     });
 }

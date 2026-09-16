@@ -1,4 +1,5 @@
 mod db;
+mod gdpr;
 mod query;
 mod write;
 

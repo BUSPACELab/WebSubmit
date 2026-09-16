@@ -53,6 +53,62 @@ fn registering_stores_the_user_and_acknowledges_the_email() {
 }
 
 #[test]
+fn registering_without_consent_stores_false() {
+    // An unchecked consent checkbox submits no `consent` field at all, rather
+    // than `consent=false`.
+    let email = "declines@brown.edu";
+    let client = anonymous();
+    let body = ok_body(post(
+        &client,
+        "/apikey/generate",
+        format!("email={}", urlencode(email)),
+    ));
+    assert!(body.contains(email));
+
+    let consent: Option<(bool, String)> = mysql::prelude::Queryable::exec_first(
+        &mut db(),
+        "SELECT consent, email FROM users WHERE email = ?",
+        (email,),
+    )
+    .unwrap();
+    assert_eq!(consent.map(|(consent, _)| consent), Some(false));
+}
+
+#[test]
+fn resetting_the_api_key_keeps_identity_but_updates_consent() {
+    let email = "resetter@brown.edu";
+    let client = anonymous();
+
+    post(
+        &client,
+        "/apikey/generate",
+        format!("email={}&consent=true", urlencode(email)),
+    );
+    let original_key = apikey(email);
+
+    // Resetting is just registering again: the key is a deterministic hash of
+    // the email, so it comes back unchanged, but this submission declines
+    // consent (the field is absent, as an unchecked box would send it).
+    post(
+        &client,
+        "/apikey/generate",
+        format!("email={}", urlencode(email)),
+    );
+
+    let row: Option<(String, String, bool)> = mysql::prelude::Queryable::exec_first(
+        &mut db(),
+        "SELECT apikey, email, consent FROM users WHERE email = ?",
+        (email,),
+    )
+    .unwrap();
+    let (stored_key, stored_email, consent) = row.expect("user should still exist after reset");
+
+    assert_eq!(stored_key, original_key, "resetting must not change the API key");
+    assert_eq!(stored_email, email, "resetting must not change the email");
+    assert!(!consent, "resetting should update consent to the new choice");
+}
+
+#[test]
 fn registering_twice_yields_the_same_key() {
     let email = "repeat@brown.edu";
     let client = anonymous();

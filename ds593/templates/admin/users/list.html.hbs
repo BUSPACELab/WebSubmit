@@ -1,0 +1,35 @@
+{{#*inline "page"}}
+    <h1>Registered users</h1>
+
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">Email</th>
+          <th scope="col">Admin?</th>
+          <th scope="col">Consent?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each users}}
+        <tr>
+          <td>{{ this.email }}</td>
+          <td>
+          {{#if this.is_admin}}
+            yes
+          {{else}}
+            no
+          {{/if}}
+          </td>
+          <td>
+          {{#if this.consent}}
+            yes
+          {{else}}
+            no
+          {{/if}}
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+{{/inline}}
+{{~> layout~}}

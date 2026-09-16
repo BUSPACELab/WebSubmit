@@ -1,0 +1,48 @@
+# short class ID (human readable)
+class = "DS593"
+# Port to run this on
+port = 3593
+
+# K9db params
+db_name = "ds593"
+db_user = ""
+db_password = ""
+db_addr = "0.0.0.0:10001"
+
+# Backup log file
+backup_file = "/tmp/backup.sql"
+
+# email addresses whose API keys get admin access.
+# NOTE: this used to be folded into `staff`. The two are now separate:
+# `admins` grants admin access, `staff` only receives notification emails.
+admins = ["babman@bu.edu"]
+# email addresses that receive a copy of each submission
+staff = ["babman@bu.edu"]
+
+# custom template and resource directories (deployment specific)
+# relative to the directory `cargo run` / the compiled binary is invoked from
+template_dir = "ds593/templates"
+resource_dir = "ds593/resources"
+
+# a secret that will be hashed into user's API keys to make them unforgeable.
+# WARNING: changing this rotates every already-issued API key.
+secret = "<SECRET>"
+
+# whether to send emails. API keys are only ever delivered by email, so this
+# has to be true for a real deployment -- but registration panics if the SMTP
+# settings below are wrong, so it stays false until they are filled in.
+send_emails = false
+# SMTP server used to send emails
+smtp_server = "smtp.example.com"
+# SMTP server port (587 submission/STARTTLS, 465 implicit TLS, 25 plain relay)
+smtp_port = 587
+# SMTP user; leave empty to use an unauthenticated relay
+smtp_user = ""
+# SMTP password
+smtp_password = ""
+# address that emails are sent from
+smtp_from = "no-reply@example.com"
+
+# whether to reset the db. MUST be false in production: priming DROPs the
+# database and recreates it from the schema, destroying every submission.
+prime = false

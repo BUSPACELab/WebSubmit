@@ -1,0 +1,40 @@
+{{#*inline "page"}}
+  <h2>Welcome to the {{ CLASS_ID }} submission system!</h2>
+
+  <h5>Signup or Reset API Key:</h5>
+  <p class="text-muted">Read our <a href="/privacy">privacy policy</a> before signing up.</p>
+  <form action="/apikey/generate" method="post" accept-charset="utf-8" id="login_form">
+    <div class="form-group">
+      <label for="emailbox">Your email address:</label>
+      <input type="email" class="form-control" placeholder="Enter email" name="email" id="emailbox" autocomplete="email" required />
+    </div>
+    <div class="form-group form-check">
+      <input name="consent" type="checkbox" class="form-check-input" id="consentbox" checked />
+      <label class="form-check-label" for="consentbox">
+        Do you consent to automated analysis of your answers to improve the course?
+        No automated analysis will ever factor into grading or course performance.
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Submit</button>
+  </form>
+
+  <h5>Log in with API key</h5>
+  <form action="/apikey/check" method="post" accept-charset="utf-8">
+    <label>Your API key:
+      <p>
+      <input name="key" autocomplete="off" required />
+      </p>
+    </label>
+    <input type="submit" class="btn btn-primary btn-block" value="Submit" />
+  </form>
+
+  <script type="text/javascript">
+  document.getElementById("login_form").addEventListener("submit", function(event) {
+    if (!document.getElementById('emailbox').value.endsWith("@bu.edu")) {
+      event.preventDefault();
+      alert("Please use your BU email!");
+    }
+  });
+</script>
+{{/inline}}
+{{~> layout~}}

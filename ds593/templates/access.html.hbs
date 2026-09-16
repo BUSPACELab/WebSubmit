@@ -1,0 +1,84 @@
+{{#*inline "page"}}
+    <h1>Your data</h1>
+
+    <h2>Users</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">Email</th>
+          <th scope="col">API key</th>
+          <th scope="col">Admin?</th>
+          <th scope="col">Consent?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each users}}
+        <tr>
+          <td>{{ this.email }}</td>
+          <td><b>API KEY hidden for security</b></td>
+          <td>
+          {{#if this.is_admin}}
+            yes
+          {{else}}
+            no
+          {{/if}}
+          </td>
+          <td>
+          {{#if this.consent}}
+            yes
+          {{else}}
+            no
+          {{/if}}
+          </td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <hr>
+
+    <h2>Answers</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Lecture</th>
+          <th scope="col">Question</th>
+          <th scope="col">Answer</th>
+          <th scope="col">Submission time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each answers}}
+        <tr>
+          <td>{{ this.id }}</td>
+          <td>{{ this.lec }}</td>
+          <td>{{ this.question_id }}</td>
+          <td>{{ this.answer }}</td>
+          <td>{{ this.submitted_at }}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <hr>
+
+    <h2>Presenters</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">Lecture</th>
+          <th scope="col">Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each presenters}}
+        <tr>
+          <td>{{ this.lecture_id }}</td>
+          <td>{{ this.email }}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+{{/inline}}
+{{~> layout~}}

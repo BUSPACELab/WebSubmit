@@ -1,7 +1,7 @@
 [package]
 name = "websubmit_boxed_sandboxes"
 version = "0.1.0"
-authors = ["Kinan Dak Albab <kinan.bab.14@gmail.com>"]
+authors = ["Kinan Dak Albab <babman@bu.edu>"]
 edition = "2018"
 build = "build.rs"
 

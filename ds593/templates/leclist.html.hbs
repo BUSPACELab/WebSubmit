@@ -1,0 +1,37 @@
+{{#*inline "page"}}
+  <h2>List of course meetings</h2>
+
+  <ul style="list-style: none;">
+  {{#each lectures}}
+    <li>
+      {{this.id}}. <a href="/questions/{{ this.id }}">{{ this.label }}</a> ({{ this.num_answered }}/{{ this.num_qs }})
+      {{#if this.is_presenter}}
+      &ndash; <small><a href="/answers/presenters/{{ this.id }}">presenter view</a></small>
+      {{/if}}
+      {{#if ../admin}}
+      &ndash; <small><a href="/answers/{{ this.id }}">answers</a> <a href="/admin/lec/{{ this.id }}">admin</a></small>
+      {{/if}}
+    </li>
+  {{/each}}
+  </ul>
+
+  <hr />
+  <h5>Subject Access Requests</h5>
+  <p><a href="/access">Access my data</a></p>
+  <p>
+    <a href="#" class="text-muted" style="text-decoration: line-through; pointer-events: none;" aria-disabled="true" tabindex="-1">Delete my data</a>
+    <br>
+    <small class="text-muted">
+      Retaining your data is required for grading, and must be kept for up to
+      one year after final grades are submitted, in accordance with
+      university policy. See our <a href="/privacy">privacy policy</a> for
+      details.
+    </small>
+  </p>
+
+  {{#if ../admin}}
+  <hr />
+  Admin: <a href="/admin/lec/add">add meeting</a> | <a href="/admin/users">user list</a> | <a href="/admin/grading">grading view</a>
+  {{/if}}
+{{/inline}}
+{{~> layout~}}

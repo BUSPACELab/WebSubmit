@@ -1,0 +1,19 @@
+{{#*inline "page"}}
+    <h2>Meeting {{ lec_id }}</h2>
+
+    <form action="/questions/{{ lec_id }}" method="post" accept-charset="utf-8">
+      {{#each questions}}
+      <p>
+        {{!-- Question prompts are admin-authored and rendered as HTML on purpose;
+              everything else on this page stays escaped. --}}
+        <label><b>Question {{ this.question_num }}:</b> {{{ this.prompt }}}<br />
+        <textarea name="answers.{{ this.id }}" rows="10" cols="80"
+         {{#unless this.answer}}placeholder="Write something here."{{/unless}}>{{ this.answer }}</textarea>
+        </label>
+      </p>
+      {{/each}}
+
+      <p><input type="submit" class="btn btn-primary" value="Submit" /></p>
+    </form>
+{{/inline}}
+{{~> layout~}}

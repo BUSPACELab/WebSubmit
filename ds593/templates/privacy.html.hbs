@@ -1,0 +1,253 @@
+{{#*inline "page"}}
+  <h1>Privacy Policy</h1>
+  <p class="text-muted">This page describes how {{ CLASS_ID }}'s submission system collects, uses, shares, and retains your data.</p>
+
+  <h2>Purpose of collection</h2>
+  <p>
+    The data described on this page is collected solely to run the course:
+    to distribute lecture questions, and to collect and grade your answers.
+  </p>
+
+  <h2>Data we collect</h2>
+  <p>The system stores the following personal data about you:</p>
+  <ul>
+    <li>Your <strong>email address</strong>, which identifies you as a registered student.</li>
+    <li>The <strong>answers</strong> you submit to lecture questions, and the <strong>timestamp</strong> of each submission.</li>
+    <li>An <strong>API key</strong>, generated from your email, which you use to log in in place of a password.</li>
+    <li>Your <strong>consent choice</strong> for the automated analysis described below.</li>
+    <li>Whether you have been assigned as a <strong>presenter</strong> for a lecture, and which one.</li>
+  </ul>
+  <p>
+    The system also stores course content that is not personal data: the
+    list of lectures and their questions.
+  </p>
+
+  <h2>Who can access your data</h2>
+  <ul>
+    <li>
+      <strong>The instructor</strong> can access all of the data above, for
+      grading and for running the course.
+    </li>
+    <li>
+      <strong>Presenters</strong> can read the answers submitted for the
+      lecture(s) they present, to prepare discussion &mdash; but never see
+      <em>who</em> submitted a given answer. The submitter's email is not
+      shown to presenters under any circumstance.
+    </li>
+    <li>
+      <strong>Your API key</strong> is subject to a stricter policy than the
+      rest of your data: once it is generated, it is never shown again to
+      anyone, including you or the instructor, other than at the moment it is
+      first created. It can only be used internally, by the system, to look
+      up who is logged in.
+    </li>
+  </ul>
+
+  <h2>Consent to improve the course</h2>
+  <p>
+    Separately from the above, you are asked to consent to automated
+    analysis of your answers to improve the course. This is optional, and
+    your choice never factors into grading or course performance in any way.
+  </p>
+  <p>If you consent:</p>
+  <ul>
+    <li>
+      Only <strong>your answers</strong> &mdash; nothing else about you
+      &mdash; may be analyzed, to identify common misunderstandings or
+      themes of confusing topics in the course's papers or material.
+    </li>
+    <li>
+      This analysis is used to decide whether to adjust the reading list or
+      background material in future iterations of the course.
+    </li>
+    <li>
+      The analysis may include various NLP tasks, locally-run language
+      models, and, where consistent with University policy, external
+      third-party language models. Any such third-party use only occurs
+      through vendors and platforms already approved by BU Information
+      Security, meeting BU's applicable security standards (including
+      encryption of data in transit and at rest) &mdash; see
+      <a href="https://www.bu.edu/policies/data-classification-policy">BU's Data Classification Policy</a>.
+    </li>
+  </ul>
+  <p>
+    You can change your consent choice at any time by returning to the
+    signup page and submitting the form again, with the consent box checked
+    or unchecked as you prefer &mdash; this updates your consent without
+    changing your API key or any other data. Changing your choice is not
+    retroactive: any analysis already carried out while you were consenting
+    cannot be undone.
+  </p>
+
+  <h2>Subject access rights</h2>
+  <p>
+    You may access a copy of every piece of personal data this system holds
+    about you at any time, on the <a href="/access">Access my data</a> page.
+    That page is generated directly from the tables below, so it always
+    reflects exactly what is stored.
+  </p>
+  <p>
+    You may not request deletion of your data until the retention period
+    described below has elapsed.
+  </p>
+
+  <h2>Data retention</h2>
+  <p>
+    Your data is retained for the duration of the course, and for up to one
+    year after final grades are submitted, to allow for grade disputes and
+    ordinary academic record-keeping. Boston University's published
+    <a href="https://www.bu.edu/policies/record-retention-table/">Record Retention Table</a>
+    does not list a specific entry for raw student coursework submissions
+    themselves; this course's one-year window is chosen to be consistent
+    with the retention periods it does specify for closely related grading
+    records (e.g. professors' grade books).
+  </p>
+
+  <h2>Data security and third parties</h2>
+  <p>
+    Your email and answers are educational records protected under FERPA,
+    and are classified as <strong>Confidential</strong> under
+    <a href="https://www.bu.edu/policies/data-classification-policy">BU's Data Classification Policy</a>.
+    In accordance with that policy, this data is stored and processed only
+    on University-approved infrastructure, and is only shared with a
+    third-party vendor or service (including any external language model
+    used for the automated analysis above) once that vendor has been
+    approved by BU Information Security and meets BU's applicable security
+    standards.
+  </p>
+
+  <hr/>
+  
+  <h1>Technical Details</h1>
+  <p class="text-muted">A few words about how we use some papers and systems from our course to enforce and realize this privacy policy.</p>
+
+  <h2>Implementing GDPR Subject Access Requests with K9db</h2>
+  <p>
+    We annotate the schema below using the data-ownership annotations
+    <a href="https://www.usenix.org/system/files/osdi23-albab.pdf">K9db</a>
+    introduces, to show how your data is protected:
+  </p>
+  <ul>
+    <li><code>DATA_SUBJECT TABLE</code> marks a table of individuals (you); other tables can then own their data by you.</li>
+    <li><code>OWNED_BY users(email)</code> marks a column as belonging to a specific user, so a policy can restrict who may read it.</li>
+  </ul>
+  <pre><code>CREATE DATA_SUBJECT TABLE users (
+    email varchar(255),
+    apikey varchar(255),
+    is_admin int,
+    consent int,
+    PRIMARY KEY (email),
+    UNIQUE (apikey)
+);
+
+-- lectures and questions table are unsharded.
+CREATE TABLE lectures (
+    id int,
+    label varchar(255),
+    PRIMARY KEY (id)
+);
+-- question_number: number *within* lecture
+CREATE TABLE questions (
+    id int AUTO_INCREMENT,
+    lecture_id int,
+    question_number int,
+    question text,
+    PRIMARY KEY (id),
+    FOREIGN KEY (lecture_id) REFERENCES lectures(id)
+);
+
+-- Answers are owned by the student that provided the answer.
+CREATE TABLE answers (
+    id varchar(255),
+    email varchar(255),
+    lec int,
+    question_id int,
+    answer text,
+    submitted_at datetime,
+    PRIMARY KEY (id),
+    FOREIGN KEY (email) OWNED_BY users(email),
+    FOREIGN KEY (lec) REFERENCES lectures(id),
+    FOREIGN KEY (question_id) REFERENCES questions(id)
+);
+
+-- A presenter owns the record that marks them as a presenter of some lecture.
+CREATE TABLE presenters (
+    id int AUTO_INCREMENT,
+    lecture_id int,
+    email varchar(255) OWNED_BY users(email),
+    PRIMARY KEY (id),
+    FOREIGN KEY (lecture_id) REFERENCES lectures(id)
+);</code></pre>
+
+  <h2>Enforcing Data Use Policies Using Sesame</h2>
+  <p>
+    The rules described earlier on this page &mdash; who can read your email,
+    your answers, or your API key, and under what circumstances &mdash; are
+    not just written down; we encode them as code and enforce them automatically
+    using <a href="https://cs.brown.edu/people/malte/pub/papers/2024-sosp-sesame.pdf">Sesame</a>.
+    This means the policies remain upheld even if we introduced a bug into the application.
+  </p>
+  <p>  
+    We attach Sesame policies to each database column that holds personal data, and
+    every time the application attempts to read that column, Sesame attaches the
+    corresponding policy to the application's read data.
+  </p>
+    Whenever the application tries to externalize some data to the outside world,
+    e.g., by showing it in an HTML page, Sesame automatically checks all policies
+    associated with that data. Sesame refuses to externalize the data if the policy
+    check fails.
+  </p>
+  <p>
+    We have defined the following policy:
+    <ul>
+      <li>
+        <strong>UserEmailPolicy</strong> &mdash; applied to <code>users.email</code>,
+        <code>answers.id</code>, <code>answers.email</code>, and
+        <code>presenters.email</code>. Allows the email's owner and the
+        instructor; refuses everyone else.
+      </li>
+      <li>
+        <strong>AnswerAccessPolicy</strong> &mdash; applied to
+        <code>answers.lec</code>, <code>answers.question_id</code>,
+        <code>answers.answer</code>, and <code>answers.submitted_at</code>.
+        Allows the answer's owner, the instructor, and any presenter of that
+        answer's lecture.
+      </li>
+      <li>
+        <strong>QueryableOnly</strong> &mdash; applied to <code>users.apikey</code>.
+        Allows the key to be looked up internally (to check who is logged in),
+        but refuses every other use, including ever displaying it on a page.
+      </li>
+      <li>
+        Every other column (the lecture and question text and so on) carries no
+        policies, since it is not personal data and we allow it to be accessed
+        by anyone.
+      </li>
+    </ul>
+  </p>
+  <p>Simplified, these checks read like this:</p>
+  <pre><code>// QueryableOnly, on users.apikey
+fn check(reason) -&gt; bool {
+    match reason {
+        Reason::Query(sql) =&gt; sql.starts_with("SELECT"),
+        Reason::CookieSet("apikey") =&gt; true,
+        _ =&gt; false, // rendering it on a page, or anything else: refused
+    }
+}
+
+// AnswerAccessPolicy, on answers.lec/question_id/answer/submitted_at
+fn check(who_is_asking) -&gt; bool {
+    if who_is_asking == self.owner { return true }         // you wrote it
+    if who_is_asking.is_admin() { return true }            // the instructor
+    if presenters_of(self.lecture).contains(who_is_asking) {
+        return true                                         // you present this lecture
+    }
+    false
+}</code></pre>
+  <p>
+    These are simplified for readability; see
+    <a href="https://cs.brown.edu/people/malte/pub/papers/2024-sosp-sesame.pdf">the Sesame paper</a>
+    for the full policy framework.
+  </p>
+{{/inline}}
+{{~> layout~}}

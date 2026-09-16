@@ -34,9 +34,8 @@ jobs:
     # a cached data directory is exactly the failure this avoids.
     #
     # No `--health-cmd`: GitHub Actions runs that inside the container via
-    # `docker exec`, and K9db has no SQL query that succeeds as a probe (see
-    # "Wait for K9db" below) and no known client tool of its own to exec.
-    # Readiness is checked from the runner instead.
+    # `docker exec`, and we don't know that this image ships any client tool
+    # to exec into. Readiness is checked from the runner instead.
     services:
       k9db:
         image: kinanbab/k9db:latest
@@ -90,22 +89,29 @@ jobs:
       # K9db only implements a restricted subset of SQL: even `SELECT 1` and
       # `SELECT VERSION()` fail ("Unsupported select modifiers"), because
       # neither has a FROM clause it can route to a shard, so there is no SQL
-      # query that works as a readiness probe. Instead, grep its logs for the
-      # line it prints once its listener is bound (confirmed locally: "Rust
-      # Proxy: Listening at: TcpListener { addr: 0.0.0.0:10001, ... }"). The
-      # `job.services.<id>.id` context gives the sibling container's ID for
-      # `docker logs`/`docker exec`, whether or not the job itself runs in a
-      # container.
+      # query that works as a readiness probe. `mysqladmin ping` is a
+      # wire-protocol ping, not a query, so it works.
+      #
+      # An earlier version of this step grepped `docker logs
+      # ${{ job.services.k9db.id }}` for the "Listening at" line K9db prints on
+      # startup (confirmed instant locally via a plain `docker run -d`). That
+      # context field is real and documented, but in an actual run here the
+      # logs came back empty regardless -- `docker logs` against a GitHub
+      # Actions service container isn't a reliable signal, for reasons this
+      # repo couldn't pin down further. Prefer this network-level check.
       - name: Wait for K9db
         run: |
+          if ! command -v mysqladmin > /dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq mysql-client
+          fi
           for _ in $(seq 1 60); do
-            if docker logs ${{ job.services.k9db.id }} 2>&1 | grep -q "Listening at"; then
+            if mysqladmin -h 127.0.0.1 -P 10001 -uroot -ppassword ping > /dev/null 2>&1; then
               break
             fi
             sleep 1
           done
-          docker logs ${{ job.services.k9db.id }}
-          docker logs ${{ job.services.k9db.id }} 2>&1 | grep "Listening at"
+          mysqladmin -h 127.0.0.1 -P 10001 -uroot -ppassword ping
 
       - name: Build
         run: cargo test --workspace --locked --no-run

@@ -22,18 +22,26 @@ jobs:
     name: Build and test
     runs-on: ubuntu-22.04
 
+    # K9db is a research MySQL-protocol proxy (sharded/owned-table schema:
+    # `CREATE DATA_SUBJECT TABLE`, `OWNED_BY`). It rejects DROP DATABASE, DROP
+    # TABLE and even SHOW TABLES outright (syntax error), so the app's own
+    # priming can only ever CREATE, never reset -- a data directory that
+    # survives from a previous run makes priming fail with "Table exists" (see
+    # [[k9db_docker_setup]] memory / the k9db-data volume note in the docker
+    # run instructions). Deliberately not giving this service a `volumes:`
+    # entry keeps every run's data directory anonymous and thrown away with
+    # the runner VM, so this can never come back. Do not add caching for it:
+    # a cached data directory is exactly the failure this avoids.
+    #
+    # No `--health-cmd`: GitHub Actions runs that inside the container via
+    # `docker exec`, and K9db has no SQL query that succeeds as a probe (see
+    # "Wait for K9db" below) and no known client tool of its own to exec.
+    # Readiness is checked from the runner instead.
     services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: password
+      k9db:
+        image: kinanbab/k9db:latest
         ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
+          - 10001:10001
 
     steps:
       - uses: actions/checkout@v4
@@ -79,23 +87,24 @@ jobs:
           cache-all-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Wait for MySQL
+      # K9db only implements a restricted subset of SQL: even `SELECT 1` and
+      # `SELECT VERSION()` fail ("Unsupported select modifiers"), because
+      # neither has a FROM clause it can route to a shard, so there is no SQL
+      # query that works as a readiness probe. Instead, grep its logs for the
+      # line it prints once its listener is bound (confirmed locally: "Rust
+      # Proxy: Listening at: TcpListener { addr: 0.0.0.0:10001, ... }"). The
+      # `job.services.<id>.id` context gives the sibling container's ID for
+      # `docker logs`/`docker exec`, whether or not the job itself runs in a
+      # container.
+      - name: Wait for K9db
         run: |
-          if ! command -v mysql > /dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq mysql-client
-          fi
           for _ in $(seq 1 60); do
-            if mysql -h 127.0.0.1 -uroot -ppassword -e 'SELECT 1' > /dev/null 2>&1; then
+            if docker logs ${{ job.services.k9db.id }} 2>&1 | grep -q "Listening at"; then
               break
             fi
             sleep 1
           done
-          mysql -h 127.0.0.1 -uroot -ppassword -e 'SELECT VERSION()'
-          # Match the plugin development servers use, so CI exercises the same
-          # authentication path the pinned mysql crate takes locally.
-          mysql -h 127.0.0.1 -uroot -ppassword \
-            -e "ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
+          docker logs ${{ job.services.k9db.id }} 2>&1 | grep "Listening at"
 
       - name: Build
         run: cargo test --workspace --locked --no-run

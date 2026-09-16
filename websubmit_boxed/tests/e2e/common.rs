@@ -42,19 +42,10 @@ pub const CLASS: &str = "TEST 101";
 /// they never disturb a development one.
 const DB_NAME: &str = "websubmit_test";
 
-fn db_user() -> String {
-    std::env::var("WEBSUBMIT_TEST_DB_USER").unwrap_or_else(|_| String::from("root"))
-}
-
-fn db_password() -> String {
-    std::env::var("WEBSUBMIT_TEST_DB_PASSWORD").unwrap_or_else(|_| String::from("password"))
-}
-
-/// Where the test database lives. Overridable so that CI can point the suite at
-/// a server on another host or port without touching the fixture.
-fn db_addr() -> String {
-    std::env::var("WEBSUBMIT_TEST_DB_ADDR").unwrap_or_else(|_| String::from("127.0.0.1"))
-}
+const DB_USER: &str = "root";
+const DB_PASSWORD: &str = "password";
+/// Where the test database lives.
+const DB_ADDR: &str = "127.0.0.1:10001";
 
 fn config(prime: bool) -> Config {
     // One rocket is launched per client, so keep their banners out of the test
@@ -73,10 +64,10 @@ fn config(prime: bool) -> Config {
         // Unused: the tests drive the app through a local client, which never
         // binds a listener.
         port: 8000,
-        db_addr: db_addr(),
+        db_addr: String::from(DB_ADDR),
         db_name: String::from(DB_NAME),
-        db_user: db_user(),
-        db_password: db_password(),
+        db_user: String::from(DB_USER),
+        db_password: String::from(DB_PASSWORD),
         admins: vec![String::from(ADMIN)],
         staff: vec![String::from(ADMIN)],
         template_dir: format!("{}/templates", env!("CARGO_MANIFEST_DIR")),
@@ -104,10 +95,7 @@ fn raw_db() -> mysql::Conn {
     mysql::Conn::new(
         mysql::Opts::from_url(&format!(
             "mysql://{}:{}@{}/{}",
-            db_user(),
-            db_password(),
-            db_addr(),
-            DB_NAME
+            DB_USER, DB_PASSWORD, DB_ADDR, DB_NAME
         ))
         .unwrap(),
     )
@@ -123,18 +111,25 @@ pub fn apikey(email: &str) -> String {
 
 fn raw_apikey(email: &str) -> String {
     raw_db()
-        .exec_first::<String, _, _>("SELECT apikey FROM users WHERE email = ?", (email,))
+        .exec_first::<(String, String), _, _>(
+            "SELECT apikey, email FROM users WHERE email = ?",
+            (email,),
+        )
         .unwrap()
         .unwrap_or_else(|| panic!("{} is not registered", email))
+        .0
 }
 
 /// The question ids of a lecture, in the order they were added.
 pub fn question_ids(lecture: u64) -> Vec<u64> {
-    db().exec(
-        "SELECT id FROM questions WHERE lecture_id = ? ORDER BY question_number",
-        (lecture,),
-    )
-    .unwrap()
+    let rows: Vec<(u64, u64, u64)> = db()
+        .exec(
+            "SELECT id, lecture_id, question_number FROM questions WHERE lecture_id = ? \
+             ORDER BY question_number",
+            (lecture,),
+        )
+        .unwrap();
+    rows.into_iter().map(|(id, _, _)| id).collect()
 }
 
 /// An app instance with no session.

@@ -82,11 +82,12 @@ fn questions_are_not_editable_by_students() {
         Status::Ok
     );
 
-    let prompts: Vec<String> = mysql::prelude::Queryable::exec(
+    let prompts: Vec<(String, u64)> = mysql::prelude::Queryable::exec(
         &mut db(),
-        "SELECT question FROM questions WHERE lecture_id = ?",
+        "SELECT question, lecture_id FROM questions WHERE lecture_id = ?",
         (96u64,),
     )
     .unwrap();
+    let prompts: Vec<String> = prompts.into_iter().map(|(question, _)| question).collect();
     assert_eq!(prompts, vec![String::from("Guarded prompt")]);
 }

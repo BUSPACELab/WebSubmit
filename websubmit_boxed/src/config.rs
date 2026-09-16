@@ -71,12 +71,15 @@ impl Config {
                     u16::try_from(port).expect("port must be between 0 and 65535")
                 }
             },
-            // Optional, so that configs written before this key existed keep
-            // working. A port may be included (e.g. "127.0.0.1:10001").
-            db_addr: match value.get("db_addr") {
-                None => String::from("127.0.0.1"),
-                Some(v) => v.as_str().expect("db_addr must be a string").into(),
-            },
+            // Required: no default, so a config that omits it fails loudly
+            // instead of silently talking to the wrong database. A port may be
+            // included (e.g. "127.0.0.1:10001").
+            db_addr: value
+                .get("db_addr")
+                .expect("db_addr is required")
+                .as_str()
+                .expect("db_addr must be a string")
+                .into(),
             db_name: value.get("db_name").unwrap().as_str().unwrap().into(),
             db_user: value.get("db_user").unwrap().as_str().unwrap().into(),
             db_password: value.get("db_password").unwrap().as_str().unwrap().into(),

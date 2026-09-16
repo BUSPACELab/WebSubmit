@@ -113,15 +113,24 @@ fn editing_a_lecture_is_closed_to_students() {
 }
 
 fn lecture_label(id: u64) -> Option<String> {
-    mysql::prelude::Queryable::exec_first(&mut db(), "SELECT label FROM lectures WHERE id = ?", (id,))
-        .unwrap()
+    let row: Option<(String, u64)> = mysql::prelude::Queryable::exec_first(
+        &mut db(),
+        "SELECT label, id FROM lectures WHERE id = ?",
+        (id,),
+    )
+    .unwrap();
+    row.map(|(label, _)| label)
 }
 
 fn presenters(lecture: u64) -> Vec<String> {
-    mysql::prelude::Queryable::exec(
+    let data: Vec<(i64, i64, String)> = mysql::prelude::Queryable::exec(
         &mut db(),
-        "SELECT email FROM presenters WHERE lecture_id = ? ORDER BY id",
+        "SELECT * FROM presenters WHERE lecture_id = ? ORDER BY id",
         (lecture,),
     )
-    .unwrap()
+    .unwrap();
+
+    data.into_iter()
+        .map(|(_, _, email)| email)
+        .collect()
 }

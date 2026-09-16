@@ -43,13 +43,13 @@ fn registering_stores_the_user_and_acknowledges_the_email() {
     assert!(body.contains(email));
     assert!(!body.contains(&apikey(email)));
 
-    let consent: Option<bool> = mysql::prelude::Queryable::exec_first(
+    let consent: Option<(bool, String)> = mysql::prelude::Queryable::exec_first(
         &mut db(),
-        "SELECT consent FROM users WHERE email = ?",
+        "SELECT consent, email FROM users WHERE email = ?",
         (email,),
     )
     .unwrap();
-    assert_eq!(consent, Some(true));
+    assert_eq!(consent.map(|(consent, _)| consent), Some(true));
 }
 
 #[test]

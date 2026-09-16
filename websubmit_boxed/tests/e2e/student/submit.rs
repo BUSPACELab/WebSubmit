@@ -48,9 +48,9 @@ fn submitting_answers_stores_them_and_shows_them_again() {
     )));
 
     // Stored under the synthesised "{email}-{question_id}" key.
-    let stored: Vec<(String, String, u64)> = db()
+    let stored: Vec<(String, String, u64, String, u64)> = db()
         .exec(
-            "SELECT id, answer, lec FROM answers WHERE email = ? AND lec = ? \
+            "SELECT id, answer, lec, email, question_id FROM answers WHERE email = ? AND lec = ? \
              ORDER BY question_id",
             (ALEX, LECTURE),
         )
@@ -59,7 +59,7 @@ fn submitting_answers_stores_them_and_shows_them_again() {
     for (id, question) in stored.iter().map(|(id, ..)| id).zip(ids.iter()) {
         assert_eq!(id, &format!("{}-{}", ALEX, question));
     }
-    assert!(stored.iter().all(|(_, stored, lec)| stored == answer && *lec == LECTURE));
+    assert!(stored.iter().all(|(_, stored, lec, ..)| stored == answer && *lec == LECTURE));
 }
 
 #[test]
@@ -79,12 +79,13 @@ fn resubmitting_replaces_the_previous_answer() {
         answers_body(&ids[..1], "A second and better attempt"),
     );
 
-    let stored: Vec<String> = db()
+    let stored: Vec<(String, String)> = db()
         .exec(
-            "SELECT answer FROM answers WHERE id = ?",
+            "SELECT answer, id FROM answers WHERE id = ?",
             (format!("{}-{}", ALEX, ids[0]),),
         )
         .unwrap();
+    let stored: Vec<String> = stored.into_iter().map(|(answer, _)| answer).collect();
     assert_eq!(stored, vec![String::from("A second and better attempt")]);
 }
 

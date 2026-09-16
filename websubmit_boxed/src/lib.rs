@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use handlebars::handlebars_helper;
+use handlebars::{Context as HbContext, Handlebars, Helper, HelperResult, Output, RenderContext};
 use rocket::Build;
 use rocket::fs::FileServer;
 use rocket_dyn_templates::Template;
@@ -28,10 +28,21 @@ pub use config::Config;
 // are doubled per RFC 4180, and a leading character that a spreadsheet would
 // read as the start of a formula is prefixed with an apostrophe so that
 // user-supplied text (e.g. an email address) cannot become a live formula.
-handlebars_helper!(csv: |*args| {
+//
+// A bare fn, rather than `handlebars_helper!`, so the quotes this emits reach
+// the CSV block as-is: the macro's value would still go through the engine's
+// HTML-escaping (turning `"` into `&quot;`), which is right for the HTML table
+// but wrong for the plain-text CSV this field belongs to.
+fn csv(
+    h: &Helper<'_, '_>,
+    _: &Handlebars<'_>,
+    _: &HbContext,
+    _: &mut RenderContext<'_, '_>,
+    out: &mut dyn Output,
+) -> HelperResult {
     let mut field = String::new();
-    for arg in args {
-        match arg {
+    for param in h.params() {
+        match param.value() {
             serde_json::Value::String(s) => field.push_str(s),
             other => field.push_str(&other.to_string()),
         }
@@ -39,8 +50,9 @@ handlebars_helper!(csv: |*args| {
     if field.starts_with(&['=', '+', '-', '@', '\t', '\r'][..]) {
         field.insert(0, '\'');
     }
-    format!("\"{}\"", field.replace('"', "\"\""))
-});
+    out.write(&format!("\"{}\"", field.replace('"', "\"\"")))?;
+    Ok(())
+}
 
 
 pub fn make_rocket(config: Config) -> SesameRocket<Build> {

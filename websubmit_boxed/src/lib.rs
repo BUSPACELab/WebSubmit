@@ -154,5 +154,12 @@ pub fn make_rocket(config: Config) -> SesameRocket<Build> {
         )
         .mount("/admin/users", routes![routes::admin::users::get_registered_users])
         .mount("/admin/grading", routes![routes::admin::users::grading])
+        .mount(
+            "/admin/analysis",
+            routes![
+                routes::admin::analysis::analysis,
+                routes::admin::analysis::analysis_submit
+            ],
+        )
         .mount("/access", routes![routes::access::access])
 }

@@ -5,6 +5,7 @@
 #![allow(non_snake_case)]
 
 mod answers;
+mod consented_answers;
 mod lectures;
 mod lectures_with_question_counts;
 mod presenters;
@@ -12,6 +13,7 @@ mod questions;
 mod users;
 
 pub use answers::AnswerModel;
+pub use consented_answers::{ConsentedAnswerModel, ConsentedAnswerModelOut};
 pub use lectures::LectureModel;
 pub use lectures_with_question_counts::LectureWithQuestionCountsModel;
 pub use presenters::PresenterModel;

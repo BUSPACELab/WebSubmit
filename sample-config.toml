@@ -20,6 +20,8 @@ template_dir = "websubmit_boxed/templates"
 resource_dir = "websubmit_boxed/templates"
 # a secret that will be hashed into user's API keys to make them unforgeable
 secret = "SECRET"
+# Anthropic API key, for the admin automated-analysis endpoint
+anthropic_api_key = "ANTHROPIC_API_KEY"
 # whether to send emails (set to false for development)
 send_emails = false
 # SMTP server used to send emails

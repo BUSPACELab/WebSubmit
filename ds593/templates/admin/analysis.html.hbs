@@ -1,0 +1,19 @@
+{{#*inline "page"}}
+    <h1>Automated Analysis</h1>
+
+    <h2>Setup</h2>
+    <form action="/admin/analysis/{{ lec_id }}/{{ question_id }}" method="post" accept-charset="utf-8">
+      <label>Paper URL: <input type="text" name="paper_url" size="60" required /></label>
+      <input type="submit" class="btn btn-primary" value="Submit">
+    </form>
+
+    <hr/>
+
+    <h2>Results</h2>
+    {{#if result}}
+    {{!-- Claude is instructed to respond with an HTML fragment, and this page
+          is admin-only, so it is rendered as raw HTML on purpose. --}}
+    <div>{{{ result }}}</div>
+    {{/if}}
+{{/inline}}
+{{~> layout~}}

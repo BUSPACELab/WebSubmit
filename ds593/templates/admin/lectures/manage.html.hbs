@@ -14,10 +14,12 @@
       <input type="submit" class="btn btn-primary" value="Update">
     </form>
 
+    <hr/>
+
     <h2>Current questions</h2>
     <ul>
       {{#each questions}}
-      <li>{{ this.question_number }}: {{{ this.question }}} &ndash; <a href="/admin/lec/{{ ../lec_id }}/{{ this.id }}">edit</a></li>
+      <li>{{ this.question_number }}: {{{ this.question }}} &ndash; <a href="/admin/lec/{{ ../lec_id }}/{{ this.id }}">edit</a> &ndash; <a href="/admin/analysis/{{ ../lec_id }}/{{ this.id }}">analyze</a></li>
       {{/each}}
     </ul>
 

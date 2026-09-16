@@ -28,6 +28,9 @@ resource_dir = "ds593/resources"
 # WARNING: changing this rotates every already-issued API key.
 secret = "<SECRET>"
 
+# Anthropic API key, for the admin automated-analysis endpoint
+anthropic_api_key = "<ANTHROPIC_API_KEY>"
+
 # whether to send emails. API keys are only ever delivered by email, so this
 # has to be true for a real deployment -- but registration panics if the SMTP
 # settings below are wrong, so it stays false until they are filled in.

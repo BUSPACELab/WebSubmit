@@ -28,6 +28,8 @@ pub struct Config {
     pub resource_dir: String,
     /// Secret (for API key generation)
     pub secret: String,
+    /// Anthropic API key, for the admin automated-analysis endpoint
+    pub anthropic_api_key: String,
     /// Whether to send emails
     pub send_emails: bool,
     /// SMTP server used to send emails
@@ -102,6 +104,12 @@ impl Config {
             template_dir: value.get("template_dir").unwrap().as_str().unwrap().into(),
             resource_dir: value.get("resource_dir").unwrap().as_str().unwrap().into(),
             secret: value.get("secret").unwrap().as_str().unwrap().into(),
+            anthropic_api_key: value
+                .get("anthropic_api_key")
+                .expect("anthropic_api_key is required")
+                .as_str()
+                .expect("anthropic_api_key must be a string")
+                .into(),
             send_emails: value.get("send_emails").unwrap().as_bool().unwrap().into(),
         smtp_server: value.get("smtp_server").unwrap().as_str().unwrap().into(),
         smtp_port: value.get("smtp_port").unwrap().as_integer().unwrap() as u16,

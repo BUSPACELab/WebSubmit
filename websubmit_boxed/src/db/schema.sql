@@ -65,3 +65,14 @@ UNION
 )
 ORDER BY id
 "';
+
+-- Answers from consenting students only, paired with the lecture/question
+-- they belong to. Feeds the admin automated-analysis endpoint: the `answer`
+-- column carries AutomatedAnalysisPolicy (see
+-- policies/automated_analysis.rs), not AnswerAccessPolicy, which re-checks
+-- consent at declassification time rather than trusting this filter alone.
+CREATE VIEW consented_answers AS '"
+SELECT answers.answer AS answer, users.consent AS consent, answers.lec AS lec, answers.question_id AS question_id
+FROM answers JOIN users ON answers.email = users.email
+WHERE users.consent = 1 AND lec = ? AND question_id = ?
+"';

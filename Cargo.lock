@@ -4220,6 +4220,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
+name = "ureq"
+version = "2.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
+dependencies = [
+ "base64 0.22.1",
+ "log",
+ "native-tls",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "url"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4402,6 +4417,7 @@ dependencies = [
  "lettre",
  "mysql",
  "mysql_common 0.22.2",
+ "native-tls",
  "rand 0.8.5",
  "rocket",
  "rocket_dyn_templates",
@@ -4416,6 +4432,7 @@ dependencies = [
  "slog-term",
  "time 0.2.27",
  "toml 0.2.1",
+ "ureq",
  "websubmit_boxed_sandboxes",
 ]
 

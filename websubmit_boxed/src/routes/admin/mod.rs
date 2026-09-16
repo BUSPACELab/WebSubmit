@@ -1,3 +1,4 @@
+pub mod analysis;
 pub mod answers;
 pub mod lectures;
 pub mod questions;

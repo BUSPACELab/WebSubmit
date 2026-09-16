@@ -73,6 +73,8 @@ fn config(prime: bool) -> Config {
         template_dir: format!("{}/templates", env!("CARGO_MANIFEST_DIR")),
         resource_dir,
         secret: String::from("test-secret"),
+        // Tests must not talk to the Anthropic API.
+        anthropic_api_key: String::new(),
         // Tests must not talk to an SMTP server.
         send_emails: false,
         smtp_server: String::from("localhost"),

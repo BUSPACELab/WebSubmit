@@ -4,8 +4,8 @@ use slog::warn;
 
 use crate::db::MySqlBackend;
 use crate::models::{
-    AnswerModel, LectureModel, LectureWithQuestionCountsModel, PresenterModel, QuestionModel,
-    UserModel,
+    AnswerModel, ConsentedAnswerModel, LectureModel, LectureWithQuestionCountsModel,
+    PresenterModel, QuestionModel, UserModel,
 };
 use crate::policies::ContextData;
 
@@ -93,6 +93,27 @@ impl MySqlBackend {
         "lectures_with_question_counts",
         LectureWithQuestionCountsModel
     );
+
+    /// `consented_answers`'s `lec = ?` / `question_id = ?` are K9db matview
+    /// key columns: they get resolved into the view at CREATE VIEW time, and
+    /// a later lookup binds them by a literal value in the query text
+    /// (matched by column name against the view's key schema), not by a
+    /// bound `?` parameter the way `query_table!`'s WHERE clauses work.
+    pub fn query_consented_answers(
+        &mut self,
+        lec: u64,
+        question_id: u64,
+        context: Context<ContextData>,
+    ) -> Vec<ConsentedAnswerModel> {
+        let sql = format!(
+            "SELECT * FROM consented_answers WHERE lec = {} AND question_id = {}",
+            lec, question_id
+        );
+        self.prep_exec(&sql, (), context)
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    }
 
     /// Run a prepared query and collect its rows.
     ///

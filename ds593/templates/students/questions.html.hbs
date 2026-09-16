@@ -1,7 +1,8 @@
 {{#*inline "page"}}
     <h2>Meeting {{ lec_id }}</h2>
 
-    <form action="/questions/{{ lec_id }}" method="post" accept-charset="utf-8">
+    <form action="/questions/{{ lec_id }}" method="post" accept-charset="utf-8"
+     onsubmit="this.querySelector('input[type=submit]').disabled = true;">
       {{#each questions}}
       <p>
         {{!-- Question prompts are admin-authored and rendered as HTML on purpose;

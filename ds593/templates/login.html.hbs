@@ -33,6 +33,9 @@
     if (!document.getElementById('emailbox').value.endsWith("@bu.edu")) {
       event.preventDefault();
       alert("Please use your BU email!");
+    } else if (document.getElementById('emailbox').value.length > 50) {
+      event.preventDefault();
+      alert("Your email address is too long! At most 50 characters.");
     }
   });
 </script>

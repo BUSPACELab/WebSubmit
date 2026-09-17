@@ -22,6 +22,9 @@ pub struct Config {
     pub admins: Vec<String>,
     /// Staff email addresses
     pub staff: Vec<String>,
+    /// Email domain registrations are restricted to (e.g. "@bu.edu");
+    /// `None` accepts any address
+    pub email_domain: Option<String>,
     /// Web template directory
     pub template_dir: String,
     /// Web resource root directory
@@ -101,6 +104,14 @@ impl Config {
                 .into_iter()
                 .map(|v| v.as_str().unwrap().into())
                 .collect(),
+            // Optional: a config that omits it (or leaves it empty) accepts
+            // any email domain, which is how configs written before this key
+            // existed behave.
+            email_domain: value.get("email_domain").map(|v| {
+                v.as_str()
+                    .expect("email_domain must be a string")
+                    .to_string()
+            }),
             template_dir: value.get("template_dir").unwrap().as_str().unwrap().into(),
             resource_dir: value.get("resource_dir").unwrap().as_str().unwrap().into(),
             secret: value.get("secret").unwrap().as_str().unwrap().into(),
@@ -118,5 +129,19 @@ impl Config {
         smtp_from: value.get("smtp_from").unwrap().as_str().unwrap().into(),
             prime: value.get("prime").unwrap().as_bool().unwrap().into(),
         })
+    }
+
+    /// The suffix an address has to end in, or `None` if registration is
+    /// unrestricted. This is also what the login page's own check reads.
+    ///
+    /// The config states the domain with its `@` (`"@bu.edu"`), so the value
+    /// is already the suffix; it is only trimmed and lowercased here, to match
+    /// addresses case insensitively.
+    pub fn email_domain_suffix(&self) -> Option<String> {
+        self.email_domain
+            .as_deref()
+            .map(str::trim)
+            .filter(|domain| !domain.is_empty())
+            .map(str::to_lowercase)
     }
 }

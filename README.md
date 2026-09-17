@@ -65,6 +65,12 @@ db_password = "password"
 admins = ["babman@bu.edu", "malte@cs.brown.edu"]
 # list of email addresses who should receive notification emails
 staff = ["babman@bu.edu", "malte@cs.brown.edu"]
+# email domain that registrations are restricted to, written with its leading
+# `@` (optional; omit or leave empty to accept any address). Checked server
+# side by `/apikey/generate`, and by the login page itself. Addresses listed in
+# `admins` or `staff` are exempt, so staff from another institution can still
+# register.
+email_domain = "@bu.edu"
 # custom template directory
 template_dir = "/path/to/templates"
 # custom resource directory (e.g., for images, CSS, JS)

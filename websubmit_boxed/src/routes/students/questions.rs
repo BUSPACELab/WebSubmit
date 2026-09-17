@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use chrono::Local;
+use rocket::http::Status;
 use rocket::State;
 use sesame::context::Context;
 use sesame::critical::{execute_critical, CriticalRegion, Signature};
@@ -17,6 +18,9 @@ use crate::email;
 use crate::guards::apikey::ApiKey;
 use crate::policies::ContextData;
 use serde::Serialize;
+
+/// Longest answer a student may submit, in characters.
+pub(crate) const MAX_ANSWER_LENGTH: usize = 3000;
 
 // TODO (allen): is this NoPolicy because it came from the user and we're going to write it (not for reading yet?)
 #[derive(Debug, FromPConForm)]
@@ -88,7 +92,10 @@ pub(crate) fn questions(
         )
         .unwrap();
 
-    let ctx = QuestionsRender {lec_id: num, questions: questions};
+    let ctx = QuestionsRender {
+        lec_id: num,
+        questions,
+    };
 
     PConTemplate::render("students/questions", &ctx, context).unwrap()
 }
@@ -101,7 +108,15 @@ pub(crate) fn questions_submit(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     config: &State<Config>,
     context: Context<ContextData>,
-) -> PConRedirect {
+) -> Result<PConRedirect, Status> {
+    let over_limit = data
+        .answers
+        .values()
+        .any(|answer| answer.clone().discard_box().chars().count() > MAX_ANSWER_LENGTH);
+    if over_limit {
+        return Err(Status::UnprocessableEntity);
+    }
+
     let num = num.into_pcon::<u64, NoPolicy>();
     let ts: mysql::Value = Local::now().naive_local().into();
 
@@ -165,7 +180,7 @@ pub(crate) fn questions_submit(
     }
     drop(bg);
 
-    PConRedirect::to2("/leclist")
+    Ok(PConRedirect::to2("/leclist"))
 }
 
 // The answer form's rows: plain values, wrapped as one PCon by the caller.

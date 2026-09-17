@@ -14,6 +14,10 @@ db_password = "password"
 admins = ["babman@bu.edu", "malte@cs.brown.edu"]
 # list email addresses who should receive notification emails
 staff = ["babman@bu.edu", "malte@cs.brown.edu"]
+# email domain registration is restricted to, written with its leading `@`
+# (optional; omit or leave empty to accept any address). Addresses in
+# `admins`/`staff` are exempt.
+email_domain = "@bu.edu"
 # custom template directory
 template_dir = "websubmit_boxed/templates"
 # custom resource directory (e.g., for images, CSS, JS)

@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use rocket::http::Status;
 use rocket::State;
 use sesame::context::Context;
 use sesame::critical::{execute_critical, CriticalRegion, Signature};
@@ -15,6 +16,23 @@ use crate::config::Config;
 use crate::db::MySqlBackend;
 use crate::email;
 use crate::policies::ContextData;
+
+/// Longest email address accepted at registration.
+const MAX_EMAIL_LENGTH: usize = 50;
+
+// Email ends with configured domain (if any).
+fn email_allowed(config: &Config, email: &str) -> bool {
+    let suffix = match config.email_domain_suffix() {
+        // No restriction configured.
+        None => return true,
+        Some(suffix) => suffix,
+    };
+
+    let email = email.trim().to_lowercase();
+    email.ends_with(&suffix)
+        || config.admins.iter().any(|a| a.trim().to_lowercase() == email)
+        || config.staff.iter().any(|s| s.trim().to_lowercase() == email)
+}
 
 #[derive(FromPConForm)]
 pub(crate) struct ApiKeyGenerateForm {
@@ -33,7 +51,12 @@ pub(crate) fn generate(
     backend: &State<Arc<Mutex<MySqlBackend>>>,
     config: &State<Config>,
     context: Context<ContextData>,
-) -> PConTemplate {
+) -> Result<PConTemplate, Status> {
+    let email = data.email.clone().discard_box();
+    if email.chars().count() > MAX_EMAIL_LENGTH || !email_allowed(config, &email) {
+        return Err(Status::UnprocessableEntity);
+    }
+
     // generate an API key from email address
     let hash: PCon<String, AnyPolicyClone> =
         execute_sandbox::<hash, _, _, _>((data.email.clone(), config.secret.clone()));
@@ -98,5 +121,5 @@ pub(crate) fn generate(
     let ctx = ApiKeyGeneratedRender {
         apikey_email: data.email.clone(),
     };
-    PConTemplate::render("apikey/generated", &ctx, context).unwrap()
+    Ok(PConTemplate::render("apikey/generated", &ctx, context).unwrap())
 }

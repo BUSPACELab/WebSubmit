@@ -8,7 +8,7 @@
         {{!-- Question prompts are admin-authored and rendered as HTML on purpose;
               everything else on this page stays escaped. --}}
         <label><b>Question {{ this.question_num }}:</b> {{{ this.prompt }}}<br />
-        <textarea name="answers.{{ this.id }}" rows="10" cols="80"
+        <textarea name="answers.{{ this.id }}" rows="10" cols="80" maxlength="3000"
          {{#unless this.answer}}placeholder="Write something here."{{/unless}}>{{ this.answer }}</textarea>
         </label>
       </p>

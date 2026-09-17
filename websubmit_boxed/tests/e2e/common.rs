@@ -70,6 +70,8 @@ fn config(prime: bool) -> Config {
         db_password: String::from(DB_PASSWORD),
         admins: vec![String::from(ADMIN)],
         staff: vec![String::from(ADMIN)],
+        // The fixture registers @brown.edu students, so no domain restriction.
+        email_domain: None,
         template_dir: format!("{}/templates", env!("CARGO_MANIFEST_DIR")),
         resource_dir,
         secret: String::from("test-secret"),

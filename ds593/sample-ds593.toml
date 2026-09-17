@@ -19,6 +19,13 @@ admins = ["babman@bu.edu"]
 # email addresses that receive a copy of each submission
 staff = ["babman@bu.edu"]
 
+# students may only register with an address in this domain, written with its
+# leading `@`; `/apikey/generate` rejects anything else. Optional: omit it (or
+# leave it empty) to accept any address. Addresses listed in `admins`/`staff`
+# above are exempt, so a guest lecturer or TA from outside the domain can still
+# be let in.
+email_domain = "@bu.edu"
+
 # custom template and resource directories (deployment specific)
 # relative to the directory `cargo run` / the compiled binary is invoked from
 template_dir = "ds593/templates"

@@ -20,7 +20,7 @@ use crate::policies::ContextData;
 use serde::Serialize;
 
 /// Longest answer a student may submit, in characters.
-pub(crate) const MAX_ANSWER_LENGTH: usize = 3000;
+pub(crate) const MAX_ANSWER_LENGTH: usize = 6000;
 
 // TODO (allen): is this NoPolicy because it came from the user and we're going to write it (not for reading yet?)
 #[derive(Debug, FromPConForm)]

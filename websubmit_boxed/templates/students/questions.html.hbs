@@ -8,7 +8,7 @@
             everything else on this page stays escaped. --}}
       <label>{{{ this.prompt }}}:
         <p>
-        <textarea name="answers.{{ this.id }}" rows="10" cols="80"
+        <textarea name="answers.{{ this.id }}" rows="10" cols="80" maxlength="6000"
          {{#unless this.answer}}placeholder="Write something here."{{/unless}}>{{ this.answer }}</textarea>
         </p>
       </label>
